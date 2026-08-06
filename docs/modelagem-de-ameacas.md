@@ -104,7 +104,6 @@ A API também deverá disponibilizar operações administrativas para manutenç�
 
 | ID | Categoria STRIDE | Componente ou ativo | Ameaça identificada | Possível impacto |
 |---|---|---|---|---|
-|  |  |  |  |  |
 | `T01` | Tampering | API de agendamentos, registros de consultas e agendas | Um paciente autenticado modifica identificadores ou campos enviados em uma operação de criação, remarcação ou cancelamento. Caso a API aceite campos indevidos ou não valide a titularidade, a disponibilidade e a integridade da operação, dados de um agendamento poderão ser alterados de forma não autorizada. | Alteração ou cancelamento indevido de consultas, conflitos nas agendas, perda de integridade dos registros e prejuízo ao atendimento. |
 
 ## 6. Casos de abuso
@@ -150,3 +149,78 @@ A API também deverá disponibilizar operações administrativas para manutenç�
 ### 7.3 Abusos de maior impacto
 
 ### 7.4 Dificuldades encontradas
+
+## 8. Etapa 2 — Avaliação e tratamento de riscos
+
+### R02 — Adulteração de dados de agendamentos
+
+#### Identificação do risco
+
+| Campo                     | Descrição                                                                                                                                                                                                                                                   |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ID do risco               | `R02`                                                                                                                                                                                                                                                       |
+| Ameaça de origem          | `T01 — Tampering`                                                                                                                                                                                                                                           |
+| Caso de abuso relacionado | `CA02 — Adulteração de dados de um agendamento`                                                                                                                                                                                                             |
+| Evento de risco           | Um usuário autenticado modifica identificadores ou campos de uma requisição relacionada a um agendamento, e a API processa os dados adulterados sem validar adequadamente a titularidade, os campos permitidos, a disponibilidade ou a transição de estado. |
+| Causa ou vulnerabilidade  | Validação insuficiente no servidor, aceitação de campos não permitidos e ausência de verificação adequada da relação entre o usuário autenticado e o agendamento.                                                                                           |
+| Ativos afetados           | Registros de consultas, agendas de pacientes e profissionais, API de agendamentos, integridade dos dados e disponibilidade operacional do atendimento.                                                                                                      |
+| Consequências             | Remarcações ou cancelamentos indevidos, conflitos de horários, alteração de consultas de terceiros, perda de integridade dos registros e prejuízos aos pacientes e profissionais.                                                                           |
+
+#### Avaliação do risco
+
+| Critério      |    Valor | Justificativa                                                                                                                                                                                  |
+| ------------- | -------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Probabilidade |      `3` | A adulteração pode ser tentada por usuários autenticados com acesso às operações de agendamento. A exploração não exige acesso administrativo, mas depende de falhas de validação no servidor. |
+| Impacto       |      `4` | Uma exploração bem-sucedida pode alterar ou cancelar consultas, afetar agendas de terceiros, comprometer a integridade dos registros e prejudicar o atendimento.                               |
+| Pontuação     |     `12` | Resultado de `3 × 4 = 12`.                                                                                                                                                                     |
+| Classificação |  Crítico | A pontuação está entre 12 e 16.                                                                                                                                                                |
+
+#### Estratégia de tratamento
+
+| Campo         | Definição                                                                                                                                                                                                                                                                          |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Estratégia    | Reduzir                                                                                                                                                                                                                                                                            |
+| Justificativa | As funcionalidades de criação, remarcação e cancelamento são essenciais ao sistema e não podem ser simplesmente eliminadas. O risco deve ser reduzido por meio de validações no servidor, controle dos campos aceitos, verificação de titularidade e monitoramento das alterações. |
+
+#### Controles propostos e mapeamento NIST CSF 2.0
+
+| ID | Função do NIST CSF 2.0 | Controle proposto | Responsável | Evidência esperada |
+| -- | ---------------------- | ----------------- | ----------- | ------------------ |
+| `C02.1` | Protect — Proteger | Validar no servidor todos os dados recebidos, aceitar somente os campos permitidos e rejeitar campos inesperados ou não modificáveis pelo cliente. | Equipe de desenvolvimento da API | Especificação dos campos permitidos e testes com campos inválidos, adicionais ou proibidos. |
+| `C02.2` | Protect — Proteger | Obter a identidade pelo contexto de autenticação e verificar a relação entre o usuário e o agendamento antes de permitir alterações. | Equipe de desenvolvimento e equipe responsável por autenticação e autorização | Regras de autorização documentadas e testes de tentativa de alteração de agendamento de terceiro. |
+| `C02.3` | Protect — Proteger | Validar novamente a disponibilidade do horário, os conflitos de agenda e as transições de estado permitidas. | Equipe de desenvolvimento das regras de negócio e equipe responsável pela persistência | Casos de teste de remarcação, conflitos e transições inválidas. |
+| `C02.4` | Detect — Detectar | Registrar tentativas rejeitadas de alteração de campos proibidos, identificadores incompatíveis ou agendamentos pertencentes a outro usuário. | Equipe de desenvolvimento e equipe de operação e monitoramento | Registros de auditoria e exemplos de eventos detectados. |
+| `C02.5` | Respond — Responder | Definir procedimento para investigar alterações suspeitas, conter o acesso abusivo e corrigir consultas afetadas. | Equipe de segurança e administração da plataforma | Procedimento de resposta a incidentes e registros das ações realizadas. |
+| `C02.6` | Recover — Recuperar | Preservar histórico suficiente para restaurar consultas adulteradas e reconciliar as agendas afetadas. | Equipe responsável pela persistência e equipe de operação | Histórico de alterações, registros de auditoria e procedimento de restauração testado. |
+
+#### Ordem de implementação
+
+1. Definição dos campos permitidos e das transições válidas.
+2. Implementação das validações obrigatórias no servidor.
+3. Verificação de titularidade e autorização.
+4. Validação de disponibilidade, conflitos e estados.
+5. Implantação dos registros de auditoria e detecção.
+6. Definição e teste dos procedimentos de resposta e recuperação.
+7. Execução de testes com requisições adulteradas.
+
+Os controles preventivos devem ser priorizados, mas a redução real do risco deverá ser comprovada por implementação e testes.
+
+#### Risco residual
+
+| Critério | Valor estimado | Justificativa |
+|---|---:|---|
+| Probabilidade residual estimada | `1` | Espera-se que a validação no servidor, o controle dos campos aceitos, a verificação de titularidade e os testes reduzam significativamente a possibilidade de uma requisição adulterada ser aceita. |
+| Impacto residual estimado | `4` | Caso uma falha ainda permita a adulteração, o impacto potencial sobre consultas e agendas permanecerá elevado. |
+| Pontuação residual estimada | `4` | Resultado esperado de `1 × 4 = 4`. |
+| Classificação residual estimada | Médio | A pontuação estimada 4 está na faixa de 4 a 7. |
+| Condição para aceitar o residual | Após implementação e testes | O residual somente poderá ser aceito após a implementação dos controles, a execução de testes de adulteração e a confirmação de que requisições indevidas são rejeitadas e registradas. |
+| Responsável pela aprovação | Gestão da plataforma | A aprovação deverá ocorrer com validação da equipe de segurança. |
+| Revisão | Após testes, mudanças ou incidentes | Reavaliar após os testes, mudanças nos endpoints ou incidentes relacionados à integridade dos agendamentos. |
+
+##### Comparação entre risco inicial e residual esperado
+
+| Risco | Nível inicial | Nível residual esperado | Condição |
+|---|---|---|---|
+| `R02` | Crítico — pontuação `12` | Médio — pontuação estimada `4` | Resultado condicionado à implementação e à validação dos controles por meio de testes. |
+
+A redução apresentada é apenas uma estimativa. O risco residual deverá ser recalculado após a implementação e os testes dos controles propostos.
