@@ -50,7 +50,7 @@
 | `GET` | `/agendamentos/{agendamentoId}` | Consultar um agendamento relacionado ao usuário | Paciente ou profissional | Identificador na rota | Verificar se o agendamento pertence ao paciente ou está associado à agenda do profissional autenticado. |
 | `PATCH` | `/agendamentos/{agendamentoId}/remarcacao` | Remarcar | Paciente | `novoHorarioId` (payload) | Confirmar titularidade; validar disponibilidade do novo horário. |
 | `PATCH` | `/agendamentos/{agendamentoId}/cancelamento` | Cancelar | Paciente | `motivo` opcional (payload) | Confirmar titularidade; alterar estado para `CANCELADA` sem exclusão. |
-| `GET` | `/profissionais/me/agenda` | Listar a própria agenda | Profissional | Nenhum / filtros opcionais | Identidade via contexto de autenticação. |
+| `GET` | `/profissionais/me/agenda` | Listar a própria agenda | Profissional | Filtros opcionais | Identidade via contexto de autenticação. |
 | `POST` | `/profissionais/me/disponibilidades` | Cadastrar disponibilidade | Profissional | `inicio`, `fim` (payload) | Identidade via autenticação; validação cronológica das datas e verificação de possíveis conflitos de horário. |
 | `PATCH` | `/profissionais/me/disponibilidades/{disponibilidadeId}` | Atualizar disponibilidade | Profissional | `inicio`, `fim` (payload) | Identidade via autenticação; titularidade da disponibilidade. |
 
@@ -105,6 +105,7 @@ A API também deverá disponibilizar operações administrativas para manutenç�
 | ID | Categoria STRIDE | Componente ou ativo | Ameaça identificada | Possível impacto |
 |---|---|---|---|---|
 |  |  |  |  |  |
+| `T01` | Tampering | API de agendamentos, registros de consultas e agendas | Um paciente autenticado modifica identificadores ou campos enviados em uma operação de criação, remarcação ou cancelamento. Caso a API aceite campos indevidos ou não valide a titularidade, a disponibilidade e a integridade da operação, dados de um agendamento poderão ser alterados de forma não autorizada. | Alteração ou cancelamento indevido de consultas, conflitos nas agendas, perda de integridade dos registros e prejuízo ao atendimento. |
 
 ## 6. Casos de abuso
 
@@ -116,6 +117,29 @@ A API também deverá disponibilizar operações administrativas para manutenç�
 - **Fluxo de abuso:**
 - **Impacto esperado:**
 - **Categorias STRIDE relacionadas:**
+
+### CA02 — Adulteração de dados de um agendamento
+
+- **Ator:** Paciente autenticado com intenção maliciosa.
+
+- **Objetivo:** Alterar indevidamente os dados de um agendamento, afetando uma consulta que não poderia modificar ou enviando valores diferentes dos permitidos pela operação.
+
+- **Condições necessárias:**
+  - O ator possui uma conta válida e acesso a uma operação de agendamento.
+  - O ator consegue modificar a requisição antes de enviá-la à API.
+  - A API não valida adequadamente a titularidade do agendamento, os campos permitidos ou a disponibilidade informada.
+
+- **Fluxo de abuso:**
+  1. O paciente autentica-se normalmente na plataforma.
+  2. O paciente inicia uma operação de remarcação de consulta.
+  3. Antes de enviar a requisição, altera o identificador do agendamento presente na rota ou acrescenta campos que não deveriam ser controlados pelo cliente, como paciente, profissional ou estado da consulta.
+  4. A requisição adulterada é enviada à API.
+  5. A API processa os valores recebidos sem verificar adequadamente a titularidade do agendamento, os campos permitidos ou a disponibilidade do horário.
+  6. O sistema altera indevidamente o registro da consulta e a agenda relacionada.
+
+- **Impacto esperado:** Alteração não autorizada de consultas, conflitos de horários, cancelamentos ou remarcações indevidas, perda de integridade dos registros e prejuízo para pacientes e profissionais.
+
+- **Categorias STRIDE relacionadas:** Tampering.
 
 ## 7. Considerações finais
 
