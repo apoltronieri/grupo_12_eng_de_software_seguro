@@ -60,9 +60,9 @@ Quando duas requisições concorrentes tentam reservar o mesmo período, apenas 
 A camada de persistência deste sistema, baseada em um banco de dados relacional, é responsável por armazenar os ativos mais críticos da aplicação. O controle estrutural do banco é versionado através de ferramentas de *Migrations*. Para garantir a segurança e a adequação à LGPD, destacam-se os seguintes ativos e diretrizes de proteção:
 
 - **Credenciais de Acesso:** Senhas não são armazenadas em texto plano. Utiliza-se criptografia unidirecional com *hashing* de alto custo ou extensões nativas.
-- **Dados Pessoais e Prontuários (LGPD):** Informações de saúde e dados sensíveis de pacientes exigem proteção reforçada em repouso, utilizando técnicas como *Transparent Data Encryption (TDE)* para o armazenamento físico.
+- **Dados Pessoais e Histórico de Consultas (LGPD):** Dados de identificação, informações de contato e o histórico de agendamentos dos pacientes exigem proteção reforçada em repouso, utilizando técnicas como *Transparent Data Encryption (TDE)* para o armazenamento físico.
 - **Logs de Auditoria (Audit Trails):** Trilha de auditoria essencial para registrar operações críticas, garantindo a rastreabilidade das ações e prevenindo o repúdio.
-- **Registros de Agendamento (Integridade Referencial):** Registros críticos de agendamento não sofrem deleção física, devendo adotar a abordagem de *Soft Delete* para manter o histórico intacto.
+- **Registros de Agendamento (Integridade Referencial):** Conforme regra de negócio, os registros de consulta não sofrem deleção física, devendo adotar a abordagem de *Soft Delete* para manter o histórico intacto em caso de cancelamentos.
 
 ### 3.3 Pontos de interação
 
@@ -165,9 +165,9 @@ Depois de obter ou forjar o token, o atacante o envia como `Bearer Token`. Se o 
 
 ### 5.2 Detalhamento da ameaça T03 — Exclusão sem rastreabilidade (Repudiation)
 
-No cenário analisado, as tabelas do banco de dados não utilizam *Soft Delete*, permitindo a exclusão física e permanente de registros críticos de agendamento. Além disso, a aplicação não gera trilhas de auditoria para operações de escrita ou deleção. 
+No cenário analisado, as tabelas do banco de dados descumprem a regra de negócio e não utilizam *Soft Delete*, permitindo a exclusão física e permanente de registros de agendamento. Além disso, a aplicação não gera trilhas de auditoria para operações de escrita ou deleção. 
 
-Dessa forma, um usuário interno mal-intencionado pode acessar a funcionalidade de deleção e excluir um agendamento. Quando o paciente ou médico reclamarem do sumiço da consulta, a administração não conseguirá rastrear os logs de aplicação para vincular a exclusão a um usuário específico. O autor da ação pode negar que cancelou a consulta, gerando disputas legais e quebra de confiança no sistema.
+Dessa forma, um usuário interno mal-intencionado pode acessar a funcionalidade de deleção e excluir um agendamento. Quando o paciente reclamar do sumiço da consulta, a administração não conseguirá rastrear os logs de aplicação para vincular a exclusão a um usuário específico. O autor da ação pode negar que cancelou a consulta, gerando disputas legais e quebra de confiança no sistema.
 
 ## 6. Casos de abuso
 
@@ -217,10 +217,10 @@ Dessa forma, um usuário interno mal-intencionado pode acessar a funcionalidade 
 - **Fluxo de abuso:**
   1. O usuário mal-intencionado acessa a funcionalidade de deleção no sistema utilizando suas credenciais.
   2. A linha correspondente ao agendamento na tabela de consultas é excluída permanentemente via comando `DELETE` direto no banco de dados.
-  3. O paciente entra em contato reclamando do sumiço da consulta, ou o médico nota um buraco na agenda.
+  3. O paciente entra em contato reclamando do sumiço da consulta, ou o profissional nota um buraco na agenda.
   4. O administrador do sistema tenta investigar quem apagou o registro.
   5. Por não haver trilha de auditoria, não são encontrados rastros ou logs vinculando a exclusão ao usuário, permitindo que ele negue a autoria.
-- **Impacto esperado:** Perda de informações médicas e gerenciais, impossibilidade de responsabilizar o autor da exclusão e potenciais processos judiciais e disputas com pacientes.
+- **Impacto esperado:** Perda do histórico de consultas e informações gerenciais, impossibilidade de responsabilizar o autor da exclusão e potenciais processos judiciais e disputas com pacientes.
 - **Categorias STRIDE relacionadas:** Repudiation.
 
 ## 7. Considerações finais
@@ -405,3 +405,67 @@ Os controles preventivos devem ser priorizados, mas a redução real do risco de
 | `R02` | Crítico — pontuação `12` | Médio — pontuação estimada `4` | Resultado condicionado à implementação e à validação dos controles por meio de testes. |
 
 A redução apresentada é apenas uma estimativa. O risco residual deverá ser recalculado após a implementação e os testes dos controles propostos.
+
+### R03 — Alteração de registro sem rastreabilidade
+
+#### Identificação do risco
+
+| Campo                     | Descrição                                                                                                                                                                                                                                |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ID do risco               | `R03`                                                                                                                                                                                                                                    |
+| Ameaça de origem          | `T03 — Repudiation`                                                                                                                                                                                                                      |
+| Caso de abuso relacionado | `CA03 — Exclusão sem rastreabilidade`                                                                                                                                                                                                    |
+| Evento de risco           | Um usuário interno ou sistema comprometido exclui ou altera um agendamento diretamente no banco de dados e nega a ação, não havendo trilha de auditoria para investigar e comprovar a autoria.                                           |
+| Causa ou vulnerabilidade  | Ausência de *Soft Delete* nas entidades, falta de *triggers* de auditoria no banco de dados e inexistência de armazenamento externo e imutável de logs de ações destrutivas.                                                             |
+| Ativos afetados           | Tabela de Consultas, Dados Pessoais de Pacientes (LGPD) e Logs de Auditoria.                                                                                                                                                             |
+| Consequências             | Perda de histórico de agendamentos, impossibilidade de auditar ações maliciosas, violação de exigências legais da LGPD e disputas legais entre clínica e paciente.                                                                       |
+
+#### Avaliação do risco
+
+| Critério      |    Valor | Justificativa                                                                                                                                                                                  |
+| ------------- | -------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Probabilidade |      `2` | Média-baixa. O evento depende de um funcionário ter acesso às rotas de deleção ou acesso direto/privilegiado ao banco de dados para executar a ação.                                           |
+| Impacto       |      `3` | Alto. A exclusão do histórico de um agendamento fere diretamente as exigências legais de retenção da LGPD, além de causar disputas operacionais e inviabilizar a rastreabilidade.              |
+| Pontuação     |      `6` | Resultado de `2 × 3 = 6`.                                                                                                                                                                      |
+| Classificação |    Médio | A pontuação está na faixa de 4 a 7.                                                                                                                                                            |
+
+#### Estratégia de tratamento
+
+| Campo         | Definição                                                                                                                                                                                                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Estratégia    | Reduzir                                                                                                                                                                                                                                                            |
+| Justificativa | A operação de cancelamento e manipulação de registros é necessária ao fluxo da clínica e não pode ser eliminada. O risco será reduzido garantindo que nenhuma deleção seja física e que toda alteração gere um rastro irrefutável e externo ao banco de dados.     |
+
+#### Controles propostos e mapeamento NIST CSF 2.0
+
+| ID | Função do NIST CSF 2.0 | Controle proposto | Responsável | Evidência esperada |
+| -- | ---------------------- | ----------------- | ----------- | ------------------ |
+| `C03.1` | Protect — Proteger | Implementar o padrão *Soft Delete* na camada de aplicação (uso das anotações `@SQLDelete` e `@Where` do Hibernate manipulando uma coluna `deleted_at`), impedindo o comando `DELETE` físico. | Equipe de desenvolvimento Backend | Código-fonte evidenciando as anotações nas entidades críticas. |
+| `C03.2` | Detect — Detectar | Criação de *Triggers* de auditoria diretamente no PostgreSQL para espelhar qualquer evento de `INSERT`, `UPDATE` ou `DELETE` em uma tabela secundária de histórico irrefutável. | Equipe de Banco de Dados | *Screenshots* ou *queries* mostrando a persistência na tabela de log após uma ação destrutiva. |
+| `C03.3` | Detect — Detectar | Configuração de envio de logs centralizados, imutáveis e apensos para ferramentas externas. | Equipe de Infraestrutura/DevOps | Painel da ferramenta externa demonstrando a ingestão dos logs de auditoria. |
+| `C03.4` | Respond & Recover — Responder e Recuperar | Estabelecer procedimentos operacionais para análise de logs em caso de disputas e documentar queries para restauração rápida de registros que sofreram *Soft Delete* acidental ou malicioso. | Equipe de Operações e Segurança | Procedimento documentado de *undelete* testado com sucesso. |
+
+#### Ordem de implementação
+
+1. Alterar a modelagem e as entidades da aplicação para adoção massiva de *Soft Delete*.
+2. Implementar e testar as *triggers* de auditoria nas tabelas de banco de dados (PostgreSQL).
+3. Configurar a remessa dos logs gerados para o repositório centralizado externo (ELK/Datadog).
+4. Homologar os procedimentos de investigação e restauração (*Recover*) com a equipe de operações.
+
+#### Risco residual
+
+| Critério | Valor estimado | Justificativa |
+|---|---:|---|
+| Probabilidade residual estimada | `1` | A probabilidade de um repúdio bem-sucedido cai drasticamente, pois o usuário não conseguirá mais apagar fisicamente o dado e a ação ficará espelhada externamente. |
+| Impacto residual estimado | `3` | O impacto legal perante a LGPD em caso de incidentes se mantém alto, embora a capacidade de recuperação seja praticamente imediata. |
+| Pontuação residual estimada | `3` | Resultado esperado de `1 × 3 = 3`. |
+| Classificação residual estimada | Baixo | A pontuação estimada 3 está na faixa de 1 a 3. |
+| Condição para aceitar o residual | Após implementação técnica | Aceitar apenas após a validação de que comandos `DELETE` físicos falham no banco ou são redirecionados, e os testes de logs externos estiverem operacionais. |
+| Responsável pela aprovação | Arquitetura de Dados | Aprovação técnica mediante validação do fluxo do Hibernate e do PostgreSQL. |
+| Revisão | Anual | Revisar sempre que houver refatoração nas entidades de agendamento ou mudança na stack de logs. |
+
+##### Comparação entre risco inicial e residual esperado
+
+| Risco | Nível inicial | Nível residual esperado | Condição |
+|---|---|---|---|
+| `R03` | Médio — pontuação `6` | Baixo — pontuação estimada `3` | Condicionado à implementação do *Soft Delete* e espelhamento externo imutável de logs. |
