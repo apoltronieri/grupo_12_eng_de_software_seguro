@@ -203,3 +203,101 @@ Depois de obter ou forjar o token, o atacante o envia como `Bearer Token`. Se o 
 ### 7.3 Abusos de maior impacto
 
 ### 7.4 Dificuldades encontradas
+
+---
+
+# Etapa 2 — Análise, Priorização e Tratamento de Riscos
+
+## 8. Critérios de avaliação
+
+### 8.1 Critérios de probabilidade
+
+| Valor | Classificação | Critério |
+|---:|---|---|
+| 1 | Baixa | O evento depende de condições incomuns, acesso muito específico ou grande capacidade técnica. |
+| 2 | Média-baixa | O evento é possível, mas depende de uma vulnerabilidade ou condição específica. |
+| 3 | Média-alta | O evento é plausível e pode ocorrer em situações comuns de uso ou ataque. |
+| 4 | Alta | O evento pode ocorrer com facilidade, frequência ou durante condições previsíveis do sistema. |
+
+### 8.2 Critérios de impacto
+
+| Valor | Classificação | Critério |
+|---:|---|---|
+| 1 | Baixo | Causa pequeno transtorno e pode ser corrigido rapidamente. |
+| 2 | Moderado | Causa interrupção ou inconsistência limitada, com possibilidade de recuperação. |
+| 3 | Alto | Causa prejuízo relevante aos usuários, ao negócio, à administração ou à privacidade. |
+| 4 | Muito alto | Pode afetar muitos usuários, comprometer operações críticas ou causar prejuízo grave. |
+
+### 8.3 Cálculo e classificação
+
+A pontuação é calculada por `Probabilidade × Impacto` e classificada conforme a escala abaixo.
+
+| Pontuação | Nível do risco |
+|---:|---|
+| 1 a 3 | Baixo |
+| 4 a 7 | Médio |
+| 8 a 11 | Alto |
+| 12 a 16 | Crítico |
+
+## 9. Registro de riscos
+
+| ID | Origem STRIDE | Evento de risco | Vulnerabilidade ou condição | Probabilidade | Impacto | Pontuação | Nível |
+|---|---|---|---|---:|---:|---:|---|
+| R01 | T01 — Spoofing / CA01 | Um atacante rouba um JWT e assume a conta de um paciente, profissional ou administrador para consultar dados e realizar operações em nome da vítima. | JWT armazenado no `localStorage`, campo vulnerável a XSS, token com validade excessiva ou ausência de controles adicionais para detectar e interromper a sessão comprometida. | 3 | 4 | 12 | Crítico |
+
+### 9.1 Justificativa do R01 — Comprometimento de conta ou token
+
+**Probabilidade — 3 (média-alta):** o ataque depende de uma vulnerabilidade XSS e de o JWT estar acessível ao JavaScript, mas essas condições são plausíveis em uma aplicação web que recebe e exibe campos de texto. Uma vez executado na mesma origem, o script consegue ler o `localStorage` sem exigir acesso ao servidor ou grande capacidade técnica. A reutilização de um token do tipo *bearer* também é simples enquanto ele estiver válido. A probabilidade não foi classificada como 4 porque ainda depende da presença de XSS, do armazenamento inadequado e de uma vítima acessar o conteúdo malicioso.
+
+**Impacto — 4 (muito alto):** o token permite agir com as permissões da vítima. O comprometimento pode expor dados pessoais e informações sobre consultas, causar agendamentos e cancelamentos fraudulentos e indisponibilizar horários legítimos. Se a vítima for profissional ou administrador, o atacante poderá alcançar agendas de vários pacientes e operações de maior privilégio. Há ainda possíveis danos à privacidade, à reputação e à continuidade do atendimento.
+
+**Nível calculado — crítico:** `3 × 4 = 12`. O nível é adequado porque combina um cenário plausível com consequências graves sobre identidade, privacidade e funcionamento do serviço. O R01 deve receber tratamento prioritário antes da disponibilização pública do sistema.
+
+## 10. Priorização
+
+O R01 tem prioridade inicial alta por atingir a identidade digital, que é a base das demais regras de autorização. Se o backend confiar em um token comprometido, validações de titularidade continuarão tratando o atacante como usuário legítimo. O risco também pode afetar diferentes perfis e permitir várias ações fraudulentas durante a validade do token. Por isso, os controles preventivos de armazenamento, XSS e duração da sessão devem preceder controles que dependem da identidade autenticada.
+
+## 11. Tratamento do risco R01
+
+### 11.1 Estratégia
+
+A estratégia escolhida é **reduzir**. A autenticação é necessária ao sistema e, portanto, não é viável evitar a atividade que origina o risco. Os controles propostos buscam reduzir a probabilidade de furto ou falsificação, limitar o período de uso de um token comprometido e permitir detecção e resposta rápidas.
+
+### 11.2 Mapeamento para as funções do NIST CSF 2.0
+
+| Risco | Govern | Identify | Protect | Detect | Respond | Recover |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| R01 | X |  | X | X | X | X |
+
+- **Govern:** definir política de validade e rotação de tokens e chaves, responsáveis e prazo de revisão.
+- **Protect:** proteger a sessão com cookie seguro, MFA, validade curta, rotação de tokens e chaves e prevenção de XSS.
+- **Detect:** monitorar reutilização de token de atualização, múltiplos acessos incompatíveis e operações anormais.
+- **Respond:** revogar sessões, bloquear temporariamente a conta, rotacionar chaves comprometidas e notificar o usuário.
+- **Recover:** recuperar a conta de forma verificada e restabelecer o acesso legítimo após o incidente.
+
+A função **Identify** não foi marcada neste registro porque o risco e os ativos envolvidos já estão identificados em T01, CA01 e R01. Ela continua relevante ao processo geral de gestão de riscos, mas não representa o foco dos controles selecionados para este plano.
+
+### 11.3 Plano de tratamento
+
+| Risco | Estratégia | Controles propostos | Funções relacionadas | Responsáveis | Evidências e verificação |
+|---|---|---|---|---|---|
+| R01 | Reduzir | Não armazenar JWT no `localStorage`; usar cookie `HttpOnly`, `Secure` e `SameSite`; codificar a saída de conteúdo não confiável e aplicar Content Security Policy contra XSS; exigir MFA/TOTP, principalmente para profissionais e administradores; usar token de acesso de curta duração e token de atualização com rotação e detecção de reutilização; rotacionar as chaves de assinatura e rejeitar algoritmos ou chaves não autorizados; revogar sessões em caso de incidente. | Govern, Protect, Detect, Respond e Recover | Equipe de desenvolvimento; equipe de infraestrutura/segurança; responsável pelo produto; suporte no atendimento a contas comprometidas. | Testes JUnit/Mockito e de integração verificando que tokens expirados, alterados ou com assinatura inválida recebem `401 Unauthorized`; testes no navegador confirmando que scripts não leem o cookie; testes de MFA; registro da rotação de chaves; logs e alertas de reutilização e múltiplos acessos; simulação documentada de revogação e recuperação de conta. |
+
+### 11.4 Ordem inicial de implementação
+
+1. Remover o JWT do `localStorage`, configurar cookies seguros e corrigir a causa de XSS com codificação de saída e Content Security Policy.
+2. Implementar tokens de acesso curtos, rotação do token de atualização, revogação e rejeição de reutilização.
+3. Definir armazenamento protegido e rotação das chaves de assinatura, incluindo procedimento para comprometimento.
+4. Implantar MFA/TOTP, começando por profissionais e administradores.
+5. Criar monitoramento, alertas, procedimentos de resposta e recuperação de conta.
+6. Automatizar testes unitários, integrados e de segurança que produzam evidências dos controles.
+
+A ordem prioriza a remoção das condições diretamente exploradas pelo CA01. Em seguida, reduz a janela de uso de credenciais roubadas e protege a assinatura. MFA e monitoramento complementam a defesa e a resposta, enquanto os testes verificam continuamente o comportamento esperado.
+
+### 11.5 Estimativa do risco residual
+
+| Risco | Nível inicial | Nível residual esperado | Condição para aceitar o residual |
+|---|---|---|---|
+| R01 | Crítico — P3 × I4 = 12 | Médio — P1 × I4 = 4 | Aceitar somente após implementar e testar todos os controles prioritários, comprovar que scripts não acessam a credencial, validar respostas `401` para tokens inválidos ou expirados, testar revogação e recuperação e manter monitoramento e revisão periódica das chaves. A aceitação deverá ser aprovada pelo responsável pelo produto e pela segurança. |
+
+O impacto residual permanece 4 porque um eventual comprometimento ainda pode causar consequências graves. A redução esperada ocorre na probabilidade, de 3 para 1, devido às camadas preventivas e à limitação da janela de exploração. Esse valor é apenas uma estimativa: o risco não poderá ser considerado reduzido até que os controles sejam implementados e as evidências sejam obtidas.
