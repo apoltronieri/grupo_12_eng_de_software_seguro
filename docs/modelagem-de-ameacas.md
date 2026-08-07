@@ -57,6 +57,13 @@ Quando duas requisições concorrentes tentam reservar o mesmo período, apenas 
 
 ### 3.2 Ativos importantes
 
+A camada de persistência deste sistema, baseada em um banco de dados relacional, é responsável por armazenar os ativos mais críticos da aplicação. O controle estrutural do banco é versionado através de ferramentas de *Migrations*. Para garantir a segurança e a adequação à LGPD, destacam-se os seguintes ativos e diretrizes de proteção:
+
+- **Credenciais de Acesso:** Senhas não são armazenadas em texto plano. Utiliza-se criptografia unidirecional com *hashing* de alto custo ou extensões nativas.
+- **Dados Pessoais e Prontuários (LGPD):** Informações de saúde e dados sensíveis de pacientes exigem proteção reforçada em repouso, utilizando técnicas como *Transparent Data Encryption (TDE)* para o armazenamento físico.
+- **Logs de Auditoria (Audit Trails):** Trilha de auditoria essencial para registrar operações críticas, garantindo a rastreabilidade das ações e prevenindo o repúdio.
+- **Registros de Agendamento (Integridade Referencial):** Registros críticos de agendamento não sofrem deleção física, devendo adotar a abordagem de *Soft Delete* para manter o histórico intacto.
+
 ### 3.3 Pontos de interação
 
 ### 3.4 Interface conceitual da API
@@ -148,12 +155,19 @@ A API também deverá disponibilizar operações administrativas para manutenç�
 |---|---|---|---|---|
 | `T01` | Spoofing | Token JWT de sessão | Um atacante explora uma vulnerabilidade XSS para executar um script no navegador, captura um JWT armazenado indevidamente no `localStorage` e reutiliza o token para se passar por um paciente, profissional ou administrador. | Acesso indevido às contas de médicos e pacientes, exposição de dados pessoais e realização de agendamentos ou cancelamentos fraudulentos. |
 | `T02` | Tampering | API de agendamentos, registros de consultas e agendas | Um paciente autenticado modifica identificadores ou campos enviados em uma operação de criação, remarcação ou cancelamento. Caso a API aceite campos indevidos ou não valide a titularidade, a disponibilidade e a integridade da operação, dados de um agendamento poderão ser alterados de forma não autorizada. | Alteração ou cancelamento indevido de consultas, conflitos nas agendas, perda de integridade dos registros e prejuízo ao atendimento. |
+| `T03` | Repudiation | Banco de Dados, Tabela de Consultas e Logs de Auditoria | Um atendente desonesto ou usuário interno exclui fisicamente um agendamento do banco e nega a ação, não havendo trilhas de auditoria para rastrear o evento. | Perda de integridade dos dados, disputas legais entre clínica e paciente, e impossibilidade de responsabilizar o autor da fraude. |
 
 ### 5.1 Detalhamento da ameaça T01 — Falsificação ou roubo de token
 
 No cenário analisado, o front-end descumpre a especificação segura e armazena o JWT no `localStorage`. Como esse armazenamento pode ser lido por JavaScript executado na mesma origem, uma falha de XSS em um campo de texto permite que um script malicioso capture o token e o envie ao atacante. Outros cenários de roubo incluem exposição por conexão sem TLS, logs, URLs, extensões maliciosas ou dispositivo comprometido. A falsificação também pode ocorrer se a chave de assinatura vazar, se um segredo simétrico for fraco ou se o backend aceitar algoritmos não previstos, tokens sem assinatura, emissor ou público incorretos ou campos de validade sem verificação.
 
 Depois de obter ou forjar o token, o atacante o envia como `Bearer Token`. Se o backend considerar o token válido, as ações serão associadas à identidade da vítima. A assinatura protege a integridade do JWT, mas não impede o uso de um token válido que tenha sido roubado; por isso, validade curta, proteção no armazenamento, rotação e revogação da renovação são necessárias.
+
+### 5.2 Detalhamento da ameaça T03 — Exclusão sem rastreabilidade (Repudiation)
+
+No cenário analisado, as tabelas do banco de dados não utilizam *Soft Delete*, permitindo a exclusão física e permanente de registros críticos de agendamento. Além disso, a aplicação não gera trilhas de auditoria para operações de escrita ou deleção. 
+
+Dessa forma, um usuário interno mal-intencionado pode acessar a funcionalidade de deleção e excluir um agendamento. Quando o paciente ou médico reclamarem do sumiço da consulta, a administração não conseguirá rastrear os logs de aplicação para vincular a exclusão a um usuário específico. O autor da ação pode negar que cancelou a consulta, gerando disputas legais e quebra de confiança no sistema.
 
 ## 6. Casos de abuso
 
@@ -194,6 +208,20 @@ Depois de obter ou forjar o token, o atacante o envia como `Bearer Token`. Se o 
 - **Impacto esperado:** Alteração não autorizada de consultas, conflitos de horários, cancelamentos ou remarcações indevidas, perda de integridade dos registros e prejuízo para pacientes e profissionais.
 
 - **Categorias STRIDE relacionadas:** Tampering.
+
+### CA03 — Exclusão sem rastreabilidade
+
+- **Ator:** Usuário interno (ex: atendente) ou sistema comprometido.
+- **Objetivo:** Excluir um agendamento no banco de dados para encobrir falhas operacionais ou fraudar a agenda, sem deixar provas de quem executou a ação.
+- **Condições necessárias:** As tabelas do banco de dados não utilizam *Soft Delete* e a aplicação não gera trilhas de auditoria para registrar alterações e deleções.
+- **Fluxo de abuso:**
+  1. O usuário mal-intencionado acessa a funcionalidade de deleção no sistema utilizando suas credenciais.
+  2. A linha correspondente ao agendamento na tabela de consultas é excluída permanentemente via comando `DELETE` direto no banco de dados.
+  3. O paciente entra em contato reclamando do sumiço da consulta, ou o médico nota um buraco na agenda.
+  4. O administrador do sistema tenta investigar quem apagou o registro.
+  5. Por não haver trilha de auditoria, não são encontrados rastros ou logs vinculando a exclusão ao usuário, permitindo que ele negue a autoria.
+- **Impacto esperado:** Perda de informações médicas e gerenciais, impossibilidade de responsabilizar o autor da exclusão e potenciais processos judiciais e disputas com pacientes.
+- **Categorias STRIDE relacionadas:** Repudiation.
 
 ## 7. Considerações finais
 
