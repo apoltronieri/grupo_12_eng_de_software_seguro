@@ -131,6 +131,8 @@ A API também deverá disponibilizar operações administrativas para manutenç�
 
 ## 4. Visão geral da arquitetura ou fluxo
 
+![Diagrama de Contexto](/diagramas/diagrama_de_contexto.png)
+
 ### 4.1 Fluxo de autenticação
 
 1. O usuário envia suas credenciais ao endpoint de login por HTTPS.
