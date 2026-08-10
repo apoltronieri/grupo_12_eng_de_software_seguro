@@ -158,6 +158,7 @@ A API também deverá disponibilizar operações administrativas para manutenç�
 | `T01` | Spoofing | Token JWT de sessão | Um atacante explora uma vulnerabilidade XSS para executar um script no navegador, captura um JWT armazenado indevidamente no `localStorage` e reutiliza o token para se passar por um paciente, profissional ou administrador. | Acesso indevido às contas de médicos e pacientes, exposição de dados pessoais e realização de agendamentos ou cancelamentos fraudulentos. |
 | `T02` | Tampering | API de agendamentos, registros de consultas e agendas | Um paciente autenticado modifica identificadores ou campos enviados em uma operação de criação, remarcação ou cancelamento. Caso a API aceite campos indevidos ou não valide a titularidade, a disponibilidade e a integridade da operação, dados de um agendamento poderão ser alterados de forma não autorizada. | Alteração ou cancelamento indevido de consultas, conflitos nas agendas, perda de integridade dos registros e prejuízo ao atendimento. |
 | `T03` | Repudiation | Banco de Dados, Tabela de Consultas e Logs de Auditoria | Um atendente desonesto ou usuário interno exclui fisicamente um agendamento do banco e nega a ação, não havendo trilhas de auditoria para rastrear o evento. | Perda de integridade dos dados, disputas legais entre clínica e paciente, e impossibilidade de responsabilizar o autor da fraude. |
+| `T04` | Information Disclosure | API de busca de profissionais | Ao realizar a busca por determinado profissional ou especiliadade, um usuário autenticado clica em `Inspecionar` e depois na aba `Network` do navegador, onde consegue visualizar dados pessoais e sensíveis do profissional no response da API.  | Acesso a dados pessoais como endereço, CPF, número de telefone, trazendo riscos como o uso indevido dos dados e tentativas de golpes ao profissional. |
 
 ### 5.1 Detalhamento da ameaça T01 — Falsificação ou roubo de token
 
@@ -170,6 +171,12 @@ Depois de obter ou forjar o token, o atacante o envia como `Bearer Token`. Se o 
 No cenário analisado, as tabelas do banco de dados descumprem a regra de negócio e não utilizam *Soft Delete*, permitindo a exclusão física e permanente de registros de agendamento. Além disso, a aplicação não gera trilhas de auditoria para operações de escrita ou deleção. 
 
 Dessa forma, um usuário interno mal-intencionado pode acessar a funcionalidade de deleção e excluir um agendamento. Quando o paciente reclamar do sumiço da consulta, a administração não conseguirá rastrear os logs de aplicação para vincular a exclusão a um usuário específico. O autor da ação pode negar que cancelou a consulta, gerando disputas legais e quebra de confiança no sistema.
+
+### 5.3 Detalhamento da ameaça T04 — Acesso a dados pessoais do profissional (Information Disclosure)
+
+No cenário analisado, a funcionalidade de busca de profissionais/especialidades pode retornar mais dados do que o usuário necessita para concluir a operação de agendamento. Um usuário mal intencionado pode facilmente acessar as ferramentas de desenvolvedor do navegador e visualizar o corpo de resposta retornado pela API de busca. Sem filtragem de campos e sem controle de autorização adequado, é possível visualizar informações sensíveis como o nome completo, CPF, endereço, telefone, e-mail e dados de vínculo profissional.
+
+O impacto vai além da simples exposição de dados: informações pessoais podem ser usadas para golpes, contatos indevidos ou coleta de dados para fins maliciosos. Em cenários mais críticos, o atacante pode montar um perfil do profissional e usar essas informações para agir de forma fraudulenta.
 
 ## 6. Casos de abuso
 
@@ -224,6 +231,23 @@ Dessa forma, um usuário interno mal-intencionado pode acessar a funcionalidade 
   5. Por não haver trilha de auditoria, não são encontrados rastros ou logs vinculando a exclusão ao usuário, permitindo que ele negue a autoria.
 - **Impacto esperado:** Perda do histórico de consultas e informações gerenciais, impossibilidade de responsabilizar o autor da exclusão e potenciais processos judiciais e disputas com pacientes.
 - **Categorias STRIDE relacionadas:** Repudiation.
+
+### CA04 — Acesso a dados pessoais do profissional
+
+- **Ator:** Usuário autenticado com intenção maliciosa.
+- **Objetivo:** Visualizar informações pessoais de um profissional da saúde para realizar tentativas de golpes e contato indevido.
+- **Condições necessárias:**
+    - O ator possui uma conta válida.
+    - O usuário realiza a busca por determinado profissional ou especialidade.
+    - A API não filtra os dados do profissional e retorna todas as suas informações registradas no sistema no corpo de reposta da requisição.
+- **Fluxo de abuso:**
+  1. O usuário autentica-se normalmente na plataforma.
+  2. Acessa a tela de agendamento de consultas e realiza a busca por um profissional ou especialidade.
+  3. O atacante acessa as ferramentas de desenvolvedor do navegador.
+  4. Acessa a aba `Network`, clica na chamada realizada para a API e, depois, em `Response`.
+  5. Mesmo que o front-end não apresente dados sensíveis na interface, a API não filtrou quais informações devem ser retornadas para a requisição, portanto, o usuário passa a conseguir visualizar dados pessoais dos profissionais.
+- **Impacto esperado:** Violação de privacidade, identidade comprometida e exposta de profissionais, tentativas de golpe e contatos indevidos com o profissional.
+- **Categorias STRIDE relacionadas:** Information Disclosure.
 
 ## 7. Considerações finais
 
