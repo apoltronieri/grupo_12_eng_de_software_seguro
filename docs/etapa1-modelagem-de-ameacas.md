@@ -133,6 +133,20 @@ A API também deverá disponibilizar operações administrativas para manutenç�
 
 ![Diagrama de Contexto](/diagramas/diagrama_de_contexto.png)
 
+O fluxo de processamento do sistema de agendamento de consultas ocorre através da comunicação entre três componentes principais:
+1. **Cliente (Interface Web):** Onde os usuários (pacientes, profissionais e administradores) interagem com o sistema, enviando requisições HTTPS.
+2. **API (Servidor de Aplicação):** Recebe as requisições, valida a autenticação, verifica as regras de negócio e processa a lógica do agendamento ou consulta.
+3. **Banco de Dados:** Armazena as informações persistentes, como dados de usuários, agendas e disponibilidade.
+
+**Fluxo básico de agendamento:**
+O Cliente envia uma requisição para listar horários disponíveis -> A API consulta o Banco de Dados, aplica as regras de negócio e retorna os horários -> O Cliente escolhe um horário e envia a requisição de reserva -> A API valida a disponibilidade e registra a consulta no Banco de Dados -> O Cliente recebe a confirmação.
+
+**Gargalos e recursos suscetíveis à exaustão:**
+- **Conexões com o Banco de Dados:** O limite de conexões simultâneas pode ser atingido rapidamente se a API não realizar um bom gerenciamento (pool de conexões) ou se consultas complexas demorarem a concluir.
+- **Processamento e Memória na API:** Requisições de busca muito amplas (ex: listar todos os profissionais sem paginação) ou falhas na validação de entrada podem forçar a API a alocar muita memória ou gastar ciclos de CPU desnecessariamente.
+- **Banda de Rede e Conexões HTTP:** Muitos acessos simultâneos ou ataques volumétricos podem esgotar a capacidade do servidor web de aceitar novas requisições.
+
+
 ### 4.1 Fluxo de autenticação
 
 1. O usuário envia suas credenciais ao endpoint de login por HTTPS.
@@ -159,6 +173,7 @@ A API também deverá disponibilizar operações administrativas para manutenç�
 | `T02` | Tampering | API de agendamentos, registros de consultas e agendas | Um paciente autenticado modifica identificadores ou campos enviados em uma operação de criação, remarcação ou cancelamento. Caso a API aceite campos indevidos ou não valide a titularidade, a disponibilidade e a integridade da operação, dados de um agendamento poderão ser alterados de forma não autorizada. | Alteração ou cancelamento indevido de consultas, conflitos nas agendas, perda de integridade dos registros e prejuízo ao atendimento. |
 | `T03` | Repudiation | Banco de Dados, Tabela de Consultas e Logs de Auditoria | Um atendente desonesto ou usuário interno exclui fisicamente um agendamento do banco e nega a ação, não havendo trilhas de auditoria para rastrear o evento. | Perda de integridade dos dados, disputas legais entre clínica e paciente, e impossibilidade de responsabilizar o autor da fraude. |
 | `T04` | Information Disclosure | API de busca de profissionais | Ao realizar a busca por determinado profissional ou especiliadade, um usuário autenticado clica em `Inspecionar` e depois na aba `Network` do navegador, onde consegue visualizar dados pessoais e sensíveis do profissional no response da API.  | Acesso a dados pessoais como endereço, CPF, número de telefone, trazendo riscos como o uso indevido dos dados e tentativas de golpes ao profissional. |
+| `T05` | Denial of Service | API e Banco de Dados | Um atacante envia um número massivo de requisições complexas de busca de horários, exaurindo as conexões com o banco e o processamento da API. | O sistema fica indisponível para os usuários legítimos, impedindo novos agendamentos e a consulta de agendas. |
 
 ### 5.1 Detalhamento da ameaça T01 — Falsificação ou roubo de token
 
@@ -248,6 +263,20 @@ O impacto vai além da simples exposição de dados: informações pessoais pode
   5. Mesmo que o front-end não apresente dados sensíveis na interface, a API não filtrou quais informações devem ser retornadas para a requisição, portanto, o usuário passa a conseguir visualizar dados pessoais dos profissionais.
 - **Impacto esperado:** Violação de privacidade, identidade comprometida e exposta de profissionais, tentativas de golpe e contatos indevidos com o profissional.
 - **Categorias STRIDE relacionadas:** Information Disclosure.
+
+### CA05 — Indisponibilidade por exaustão de recursos
+
+- **Ator:** Usuário mal-intencionado ou rede de bots (botnet).
+- **Objetivo:** Tornar a plataforma de agendamentos indisponível para usuários legítimos, causando prejuízos ao negócio e aos profissionais.
+- **Condições necessárias:** A API do sistema não possui limitação de taxa (rate limiting) adequada e expõe endpoints de busca (ex: listagem de horários ou profissionais) que consomem muito processamento ou conexões com o banco de dados.
+- **Fluxo de abuso:**
+  1. O atacante identifica um endpoint custoso na API (por exemplo, a busca de disponibilidade sem filtros adequados de data).
+  2. Utilizando ferramentas automatizadas, o atacante dispara milhares de requisições simultâneas para este endpoint.
+  3. A API tenta processar todas as requisições, esgotando o pool de conexões com o banco de dados e/ou a capacidade de CPU/Memória do servidor.
+  4. O sistema não consegue mais responder a novas requisições.
+  5. Usuários legítimos recebem erros de tempo limite (timeout) ou falha no servidor (HTTP 500/503).
+- **Impacto esperado:** Indisponibilidade total ou parcial do sistema de agendamento, causando insatisfação dos usuários, perda de consultas, danos à reputação e potenciais prejuízos financeiros.
+- **Categorias STRIDE relacionadas:** Denial of Service.
 
 ## 7. Considerações finais
 
