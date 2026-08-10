@@ -11,7 +11,7 @@ Trabalho final da disciplina de Engenharia de Software Seguro.
 
 ## Documento principal
 
-A análise será desenvolvida em [docs/modelagem-de-ameacas.md](docs/modelagem-de-ameacas.md).
+A análise será desenvolvida e dividida em etapas da entrega, sendo possível encontrá-las na pasta `docs`.
 
 ## Organização do repositório
 
@@ -19,7 +19,12 @@ A análise será desenvolvida em [docs/modelagem-de-ameacas.md](docs/modelagem-d
 .
 ├── README.md
 ├── docs/
-│   └── modelagem-de-ameacas.md
+│   └── etapa1-modelagem-de-ameacas.md
+│   └── etapa2-tratamento-de-riscos.md
+│   ├── registro-de-riscos/
+│       └── R01.md
+│       └── R02.md
+│       └── R03.md
 ├── diagramas/
 │   └── .gitkeep
 └── imagens/
