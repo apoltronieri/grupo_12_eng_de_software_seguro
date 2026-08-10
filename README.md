@@ -26,11 +26,11 @@ A análise será desenvolvida e dividida em etapas da entrega, sendo possível e
 │       └── R02.md
 │       └── R03.md
 ├── diagramas/
-│   └── .gitkeep
+│   └── diagrama_de_contexto.png
 └── imagens/
     └── .gitkeep
 ```
 
-- `docs/`: documento principal do trabalho.
+- `docs/`: documentos de cada etapa entregável.
 - `diagramas/`: diagramas e seus arquivos-fonte.
 - `imagens/`: imagens complementares utilizadas na documentação.
