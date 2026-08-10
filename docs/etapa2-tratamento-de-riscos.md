@@ -38,3 +38,4 @@ A pontuação é calculada por `Probabilidade × Impacto` e classificada conform
 | [R01](registro-de-riscos/R01.md) | T01 — Spoofing / CA01 | 3 | 4 | 12 | Crítico |
 | [R02](registro-de-riscos/R02.md) | T02 — Tampering / CA02 | 3 | 4 | 12 | Crítico |
 | [R03](registro-de-riscos/R03.md) | T03 — Repudiation / CA03 | 2 | 3 | 6 | Médio |
+| [R04](registro-de-riscos/R04.md) | T04 — Information Disclosure / CA04 | 3 | 4 | 12 | Crítico |
