@@ -55,6 +55,17 @@ Quando duas requisições concorrentes tentam reservar o mesmo período, apenas 
 
 ### 3.1 Usuários e perfis de acesso
 
+O sistema utiliza Controle de Acesso Baseado em Papéis (RBAC - *Role-Based Access Control*) para restringir as funcionalidades de acordo com o perfil do usuário. Foram identificados os seguintes perfis e suas respectivas permissões:
+
+- **Visitante (Público):** Usuário não autenticado. Permissões limitadas a visualizar informações públicas (profissionais, especialidades), cadastrar-se como paciente e realizar autenticação no sistema.
+- **Paciente:** Usuário autenticado. Possui permissões para consultar disponibilidade de horários, criar, visualizar, remarcar e cancelar apenas seus próprios agendamentos (autorização em nível de recurso baseada em sua identidade).
+- **Profissional (Médico/Atendente de Saúde):** Usuário autenticado responsável por gerenciar seus horários. Possui permissões para cadastrar, atualizar suas disponibilidades e visualizar sua própria agenda de consultas.
+- **Administrador:** Usuário autenticado com privilégios elevados. Possui permissões globais sobre os recursos do sistema, sendo o único capaz de executar **operações restritas e administrativas**, como:
+  - **Manutenção de Usuários/Pacientes:** bloqueio de contas e intervenções de suporte.
+  - **Manutenção de Profissionais:** cadastro de novos profissionais e vinculação a especialidades.
+  - **Manutenção de Especialidades:** criação, edição e exclusão de áreas de atuação clínica.
+  - **Gestão Global de Agendamentos:** cancelamento ou modificação de agendamentos de qualquer paciente ou profissional (para fins de contingência ou moderação).
+
 ### 3.2 Ativos importantes
 
 A camada de persistência deste sistema, baseada em um banco de dados relacional, é responsável por armazenar os ativos mais críticos da aplicação. O controle estrutural do banco é versionado através de ferramentas de *Migrations*. Para garantir a segurança e a adequação à LGPD, destacam-se os seguintes ativos e diretrizes de proteção:
@@ -133,6 +144,20 @@ A API também deverá disponibilizar operações administrativas para manutenç�
 
 ![Diagrama de Contexto](/diagramas/diagrama_de_contexto.png)
 
+O fluxo de processamento do sistema de agendamento de consultas ocorre através da comunicação entre três componentes principais:
+1. **Cliente (Interface Web):** Onde os usuários (pacientes, profissionais e administradores) interagem com o sistema, enviando requisições HTTPS.
+2. **API (Servidor de Aplicação):** Recebe as requisições, valida a autenticação, verifica as regras de negócio e processa a lógica do agendamento ou consulta.
+3. **Banco de Dados:** Armazena as informações persistentes, como dados de usuários, agendas e disponibilidade.
+
+**Fluxo básico de agendamento:**
+O Cliente envia uma requisição para listar horários disponíveis -> A API consulta o Banco de Dados, aplica as regras de negócio e retorna os horários -> O Cliente escolhe um horário e envia a requisição de reserva -> A API valida a disponibilidade e registra a consulta no Banco de Dados -> O Cliente recebe a confirmação.
+
+**Gargalos e recursos suscetíveis à exaustão:**
+- **Conexões com o Banco de Dados:** O limite de conexões simultâneas pode ser atingido rapidamente se a API não realizar um bom gerenciamento (pool de conexões) ou se consultas complexas demorarem a concluir.
+- **Processamento e Memória na API:** Requisições de busca muito amplas (ex: listar todos os profissionais sem paginação) ou falhas na validação de entrada podem forçar a API a alocar muita memória ou gastar ciclos de CPU desnecessariamente.
+- **Banda de Rede e Conexões HTTP:** Muitos acessos simultâneos ou ataques volumétricos podem esgotar a capacidade do servidor web de aceitar novas requisições.
+
+
 ### 4.1 Fluxo de autenticação
 
 1. O usuário envia suas credenciais ao endpoint de login por HTTPS.
@@ -159,6 +184,9 @@ A API também deverá disponibilizar operações administrativas para manutenç�
 | `T02` | Tampering | API de agendamentos, registros de consultas e agendas | Um paciente autenticado modifica identificadores ou campos enviados em uma operação de criação, remarcação ou cancelamento. Caso a API aceite campos indevidos ou não valide a titularidade, a disponibilidade e a integridade da operação, dados de um agendamento poderão ser alterados de forma não autorizada. | Alteração ou cancelamento indevido de consultas, conflitos nas agendas, perda de integridade dos registros e prejuízo ao atendimento. |
 | `T03` | Repudiation | Banco de Dados, Tabela de Consultas e Logs de Auditoria | Um atendente desonesto ou usuário interno exclui fisicamente um agendamento do banco e nega a ação, não havendo trilhas de auditoria para rastrear o evento. | Perda de integridade dos dados, disputas legais entre clínica e paciente, e impossibilidade de responsabilizar o autor da fraude. |
 | `T04` | Information Disclosure | API de busca de profissionais | Ao realizar a busca por determinado profissional ou especiliadade, um usuário autenticado clica em `Inspecionar` e depois na aba `Network` do navegador, onde consegue visualizar dados pessoais e sensíveis do profissional no response da API.  | Acesso a dados pessoais como endereço, CPF, número de telefone, trazendo riscos como o uso indevido dos dados e tentativas de golpes ao profissional. |
+| `T05` | Denial of Service | API e Banco de Dados | Um atacante envia um número massivo de requisições complexas de busca de horários, exaurindo as conexões com o banco e o processamento da API. | O sistema fica indisponível para os usuários legítimos, impedindo novos agendamentos e a consulta de agendas. |
+| `T06` | Elevation of Privilege | Controle de Acesso (API e Backend) | Um usuário autenticado com baixo privilégio (ex: Paciente) envia requisições para endpoints administrativos ou explora falhas no modelo de autorização (*Broken Access Control* ou *Mass Assignment*) para realizar ações restritas (ex: gerenciar profissionais). | Acesso não autorizado a funções críticas, comprometimento total da integridade do sistema e capacidade de executar ações destrutivas (ex: exclusão em massa). |
+
 
 ### 5.1 Detalhamento da ameaça T01 — Falsificação ou roubo de token
 
@@ -177,6 +205,12 @@ Dessa forma, um usuário interno mal-intencionado pode acessar a funcionalidade 
 No cenário analisado, a funcionalidade de busca de profissionais/especialidades pode retornar mais dados do que o usuário necessita para concluir a operação de agendamento. Um usuário mal intencionado pode facilmente acessar as ferramentas de desenvolvedor do navegador e visualizar o corpo de resposta retornado pela API de busca. Sem filtragem de campos e sem controle de autorização adequado, é possível visualizar informações sensíveis como o nome completo, CPF, endereço, telefone, e-mail e dados de vínculo profissional.
 
 O impacto vai além da simples exposição de dados: informações pessoais podem ser usadas para golpes, contatos indevidos ou coleta de dados para fins maliciosos. Em cenários mais críticos, o atacante pode montar um perfil do profissional e usar essas informações para agir de forma fraudulenta.
+
+### 5.4 Detalhamento da ameaça T06 — Escalada indevida de privilégios (Elevation of Privilege)
+
+No cenário analisado, o sistema pode falhar em aplicar verificações rigorosas de autorização nos endpoints administrativos. Embora o backend exija um token JWT válido para identificar o usuário, ele pode omitir a checagem de regras de controle de acesso (RBAC), confiando equivocadamente que usuários comuns não descobrirão as rotas restritas apenas porque os botões correspondentes estão ocultos no front-end.
+
+Outra falha estrutural comum associada à escalada de privilégios é o *Mass Assignment* (Atribuição em Massa), em que a API permite a injeção do campo `perfil` ou `role` no payload durante o cadastro ou atualização do usuário. Sem a devida sanitização de parâmetros no servidor, um usuário comum pode promover sua própria conta a "Administrador", adquirindo permissões elevadas para acessar todos os dados sensíveis, adulterar cadastros de médicos e manipular o fluxo de agendamentos globalmente.
 
 ## 6. Casos de abuso
 
@@ -248,6 +282,40 @@ O impacto vai além da simples exposição de dados: informações pessoais pode
   5. Mesmo que o front-end não apresente dados sensíveis na interface, a API não filtrou quais informações devem ser retornadas para a requisição, portanto, o usuário passa a conseguir visualizar dados pessoais dos profissionais.
 - **Impacto esperado:** Violação de privacidade, identidade comprometida e exposta de profissionais, tentativas de golpe e contatos indevidos com o profissional.
 - **Categorias STRIDE relacionadas:** Information Disclosure.
+
+
+### CA05 — Indisponibilidade por exaustão de recursos
+
+- **Ator:** Usuário mal-intencionado ou rede de bots (botnet).
+- **Objetivo:** Tornar a plataforma de agendamentos indisponível para usuários legítimos, causando prejuízos ao negócio e aos profissionais.
+- **Condições necessárias:** A API do sistema não possui limitação de taxa (rate limiting) adequada e expõe endpoints de busca (ex: listagem de horários ou profissionais) que consomem muito processamento ou conexões com o banco de dados.
+- **Fluxo de abuso:**
+  1. O atacante identifica um endpoint custoso na API (por exemplo, a busca de disponibilidade sem filtros adequados de data).
+  2. Utilizando ferramentas automatizadas, o atacante dispara milhares de requisições simultâneas para este endpoint.
+  3. A API tenta processar todas as requisições, esgotando o pool de conexões com o banco de dados e/ou a capacidade de CPU/Memória do servidor.
+  4. O sistema não consegue mais responder a novas requisições.
+  5. Usuários legítimos recebem erros de tempo limite (timeout) ou falha no servidor (HTTP 500/503).
+- **Impacto esperado:** Indisponibilidade total ou parcial do sistema de agendamento, causando insatisfação dos usuários, perda de consultas, danos à reputação e potenciais prejuízos financeiros.
+- **Categorias STRIDE relacionadas:** Denial of Service.
+
+### CA06 — Escalada indevida de privilégios
+
+- **Ator:** Usuário autenticado com perfil de baixo privilégio (ex: Paciente).
+- **Objetivo:** Obter acesso administrativo para realizar operações restritas, como cadastrar ou excluir profissionais, ou acessar os dados globais do sistema.
+- **Condições necessárias:**
+  - O ator possui uma conta válida (ex: Paciente).
+  - A API possui endpoints administrativos (ex: `POST /profissionais`) e falha em validar se o papel (*role*) contido no JWT possui autorização para aquela rota.
+  - Alternativamente, a API de atualização de cadastro aceita e persiste campos críticos (como `"perfil": "ADMIN"`) fornecidos pelo cliente (*Mass Assignment*).
+- **Fluxo de abuso:**
+  1. O usuário (Paciente) autentica-se na plataforma, recebe seu JWT e analisa as requisições normais feitas pelo front-end.
+  2. O atacante descobre ou deduz a existência de rotas administrativas da API.
+  3. Utilizando uma ferramenta como o Postman ou o cURL, o atacante constrói uma requisição para o endpoint restrito (ex: criação de um médico fantasma) e anexa seu JWT legítimo de Paciente no cabeçalho `Authorization`.
+  4. O backend recebe a requisição, valida a assinatura e a expiração do JWT (confirmando o login), mas omite a validação de autorização de perfis para aquela rota específica.
+  5. A requisição é processada com sucesso, executando a ação administrativa não autorizada.
+- **Impacto esperado:** Comprometimento da segurança e integridade de todo o sistema. Acesso irrestrito a dados confidenciais e capacidade de realizar sabotagem (exclusão de registros críticos).
+- **Categorias STRIDE relacionadas:** Elevation of Privilege, com consequências secundárias de Information Disclosure e Tampering.
+
+
 
 ## 7. Considerações finais
 
