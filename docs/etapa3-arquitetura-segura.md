@@ -20,6 +20,14 @@
 
 O requisito deverá ser aplicado a todos os endpoints protegidos da API, independentemente do perfil apresentado no token. A existência de informações de identidade ou perfil no payload não deverá compensar uma autenticação ausente ou inválida.
 
+### Vulnerabilidade catalogada
+
+| Risco e requisito | Vulnerabilidade ou categoria | Referência utilizada | Relação com o sistema |
+|---|---|---|---|
+| `R01` / `RS01` | `OWASP API2:2023 — Broken Authentication` | [OWASP API Security Top 10 — API2:2023](https://owasp.org/API-Security/editions/2023/en/0xa2-broken-authentication/) | A API utiliza tokens JWT para identificar pacientes, profissionais e administradores. Se não validar a autenticidade, a assinatura ou a expiração do token, poderá aceitar uma credencial inválida e associar a requisição à identidade representada no JWT. |
+
+A categoria `API2:2023 — Broken Authentication` inclui APIs que não validam a autenticidade dos tokens, aceitam JWTs sem assinatura ou com assinatura fraca ou deixam de verificar sua expiração. Essas falhas correspondem diretamente ao `R01`, pois permitem que um atacante use um token inválido ou comprometido para assumir a conta de outra pessoa. O `RS01` reduz esse risco ao exigir a validação do token antes de qualquer operação protegida e ao definir testes que comprovem sua rejeição.
+
 ## RS02 — Autorização por objeto em alterações de agendamentos
 
 ### Origem e objetivo
