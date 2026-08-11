@@ -62,3 +62,27 @@ Este requisito trata da autorização horizontal sobre cada agendamento. As perm
 | `R02` / `RS02` | `OWASP API1:2023 — Broken Object Level Authorization (BOLA)` | [OWASP API Security Top 10 — API1:2023](https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/) | Os endpoints de remarcação e cancelamento recebem o identificador do agendamento na rota. Sem uma verificação de autorização sobre o objeto, um paciente autenticado poderia substituir esse valor pelo identificador de uma consulta de terceiro e modificar um registro que não lhe pertence. |
 
 A categoria BOLA corresponde ao vetor do `CA02` baseado na manipulação de `agendamentoId`: o usuário possui acesso legítimo à função, mas tenta ultrapassar o limite de autorização alterando a referência do objeto. Por isso, validar apenas a autenticação, o formato do identificador ou sua imprevisibilidade não satisfaz o `RS02`; a permissão deverá ser conferida no backend para o agendamento e a ação solicitados.
+
+## RS03 — Proteção contra exposição excessiva de dados na API
+
+### Origem e objetivo
+
+| Campo | Definição |
+|---|---|
+| ID | `RS03` |
+| Risco de origem | `R04 — Acesso a dados pessoais do profissional` (`Crítico`, pontuação `12`) |
+| Ameaça e caso de abuso relacionados | `T04 — Information Disclosure` |
+| Controle relacionado | `C04.1 — Implementar retorno de dados mínimos no backend, expondo apenas os campos necessários para a operação de agendamento ou consulta.` |
+| Objetivo | Garantir que as respostas da API enviadas ao cliente contenham estritamente os dados necessários e autorizados para a visualização, impedindo o vazamento de informações pessoais e sensíveis no tráfego de rede. |
+
+### Requisito de segurança
+
+| ID | Risco de origem | Requisito de segurança | Critério de verificação |
+|---|---|---|---|
+| `RS03` | `R04` | A API deverá utilizar Objetos de Transferência de Dados (DTOs) ou mecanismos de projeção estruturados para garantir que atributos sensíveis do modelo de domínio original (ex.: CPF, e-mail pessoal, endereço) não sejam serializados e enviados nas respostas HTTP. As regras de visibilidade dos campos deverão ser validadas no servidor com base no perfil de acesso do usuário solicitante. | Revisão de código e testes automatizados (unitários e de integração) deverão demonstrar: (a) o uso exclusivo de DTOs nas respostas dos endpoints de profissionais; (b) que o payload das respostas HTTP não contém campos além daqueles estritamente mapeados e necessários; (c) que a omissão dos campos ocorre no backend, não dependendo de ocultação no frontend. |
+
+### Vulnerabilidade catalogada
+
+| Risco e requisito | Vulnerabilidade ou categoria | Referência utilizada | Relação com o sistema |
+|---|---|---|---|
+| `R04` / `RS03` | `OWASP API3:2023 - CWE-212 — Improper Disclosure of Information` | https://cwe.mitre.org/data/definitions/212.html | A ausência de filtros no backend faz com que a API envie o objeto completo do banco para o cliente. Um atacante pode interceptar esse tráfego ou inspecionar a resposta da requisição (Network do navegador) para acessar dados que a interface gráfica do usuário simplesmente não desenhou. RS03 mitiga isso garantindo que o dado sensível nunca cruze o Trust Boundary (limite de confiança) da API para a Internet. |
