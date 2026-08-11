@@ -86,3 +86,39 @@ A categoria BOLA corresponde ao vetor do `CA02` baseado na manipulação de `age
 | Risco e requisito | Vulnerabilidade ou categoria | Referência utilizada | Relação com o sistema |
 |---|---|---|---|
 | `R04` / `RS03` | `OWASP API3:2023 - CWE-212 — Improper Disclosure of Information` | https://cwe.mitre.org/data/definitions/212.html | A ausência de filtros no backend faz com que a API envie o objeto completo do banco para o cliente. Um atacante pode interceptar esse tráfego ou inspecionar a resposta da requisição (Network do navegador) para acessar dados que a interface gráfica do usuário simplesmente não desenhou. RS03 mitiga isso garantindo que o dado sensível nunca cruze o Trust Boundary (limite de confiança) da API para a Internet. |
+
+## RS06 — Controle de acesso baseado em papéis e proteção contra atribuição em massa
+
+### Origem e objetivo
+
+| Campo | Definição |
+|---|---|
+| ID | `RS06` |
+| Risco de origem | `R06 — Escalada indevida de privilégios` (`Crítico`, pontuação `12`) |
+| Ameaça e caso de abuso relacionados | `T06 — Elevation of Privilege` e `CA06 — Escalada indevida de privilégios` |
+| Controle relacionado | `C06.2 — Aplicar o princípio do menor privilégio, validar papéis nos endpoints restritos e prevenir Mass Assignment` |
+| Objetivo | Impedir que um usuário autenticado com baixo privilégio acesse endpoints administrativos ou promova seu próprio perfil por meio de campos injetados no payload. |
+
+### Decisão arquitetural
+
+| Campo | Definição |
+|---|---|
+| Risco tratado | `R06 — Escalada indevida de privilégios` |
+| Decisão | Toda rota que executa operação administrativa ou sensível deverá exigir explicitamente o papel `ADMIN` verificado no backend, independentemente do que estiver visível ou oculto no frontend. A vinculação de dados de entrada a objetos de domínio deverá ocorrer por meio de DTOs estritos que não exponham o campo `perfil` ou `role` nas operações de cadastro e atualização acessíveis a usuários comuns. |
+| Justificativa | Controles presentes apenas na interface gráfica não constituem barreira de segurança: um usuário mal-intencionado pode contorná-la enviando requisições diretamente à API com ferramentas como Postman ou cURL. A verificação de papel no servidor é a única barreira confiável. Da mesma forma, permitir que o cliente envie o campo `perfil` em um payload de cadastro ou atualização abre a possibilidade de *Mass Assignment*, promovendo a conta a um papel privilegiado sem intervenção administrativa. |
+| Componente afetado | Camada de autorização da API (filtros e anotações do Spring Security) e DTOs de criação e atualização de usuário. |
+| Resultado esperado | Requisições de usuários com papel `PACIENTE` ou `PROFISSIONAL` direcionadas a endpoints administrativos deverão receber `403 Forbidden` antes de qualquer processamento de negócio. Tentativas de injetar o campo `perfil` num payload de cadastro ou atualização deverão ser silenciosamente ignoradas, pois o campo não estará mapeado no DTO correspondente. |
+
+### Requisito de segurança
+
+| ID | Risco de origem | Requisito de segurança | Critério de verificação |
+|---|---|---|---|
+| `RS06` | `R06` | A API deverá verificar o papel do usuário autenticado em cada endpoint que execute operação administrativa ou restrita. Além disso, os DTOs utilizados em operações de criação e atualização de usuários acessíveis a perfis comuns não poderão mapear o campo `perfil` ou equivalente, impedindo sua persistência mesmo que seja enviado pelo cliente. | Testes de autorização deverão demonstrar que: (a) um token de `PACIENTE` válido recebe `403 Forbidden` ao tentar acessar rotas administrativas; (b) um payload de cadastro contendo `"perfil": "ADMIN"` não altera o papel armazenado no banco; (c) rotas legítimas do perfil continuam acessíveis com o respectivo token. |
+
+O requisito deverá ser aplicado, no mínimo, às rotas que realizam as operações administrativas descritas na seção 3.1 do documento de modelagem de ameaças, como manutenção de profissionais, especialidades e gestão global de agendamentos.
+
+### Vulnerabilidade catalogada
+
+| Risco e requisito | Vulnerabilidade ou categoria | Referência utilizada | Relação com o sistema |
+|---|---|---|---|
+| `R06` / `RS06` | `OWASP API5:2023 — Broken Function Level Authorization` e `OWASP API6:2023 — Unrestricted Access to Sensitive Business Flows` | [OWASP API Security Top 10 — API5:2023](https://owasp.org/API-Security/editions/2023/en/0xa5-broken-function-level-authorization/) | O sistema expõe rotas administrativas que, sem a verificação de papel no servidor, podem ser acessadas por qualquer usuário autenticado que descubra ou deduza o caminho. Além disso, a ausência de DTOs estritos permite que campos como `perfil` sejam aceitos e persistidos indevidamente por *Mass Assignment*. O `RS06` mitiga ambos os vetores ao centralizar a verificação de autorização no backend e ao restringir o contrato de dados aceito pela API. |
