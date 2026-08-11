@@ -1,5 +1,25 @@
 # Etapa 3 — Projeto de uma Arquitetura Segura
 
+## RS01 — Validação de tokens de acesso
+
+### Origem e objetivo
+
+| Campo | Definição |
+|---|---|
+| ID | `RS01` |
+| Risco de origem | `R01 — Comprometimento de conta ou token` (`Crítico`, pontuação `12`) |
+| Ameaça e caso de abuso relacionados | `T01 — Spoofing` e `CA01` |
+| Controle relacionado | `C01.2 — Proteger a sessão e validar os tokens de acesso` |
+| Objetivo | Impedir que tokens de acesso expirados, alterados ou assinados com chave ou algoritmo não autorizado sejam aceitos pela API. |
+
+### Requisito de segurança
+
+| ID | Risco de origem | Requisito de segurança | Critério de verificação |
+|---|---|---|---|
+| `RS01` | `R01` | Antes de autorizar qualquer requisição protegida, a API deverá validar a assinatura, o algoritmo permitido, o emissor (`iss`), o público destinatário (`aud`) e a expiração (`exp`) do JWT. Se qualquer validação falhar, a API deverá recusar a autenticação e não executar a operação solicitada. | Testes unitários e de integração deverão demonstrar que um token válido permite o acesso autorizado e que tokens expirados, alterados, com assinatura inválida, algoritmo não permitido, emissor incorreto ou público incorreto recebem `401 Unauthorized`. Em todos os cenários recusados, a operação protegida deverá permanecer sem execução. |
+
+O requisito deverá ser aplicado a todos os endpoints protegidos da API, independentemente do perfil apresentado no token. A existência de informações de identidade ou perfil no payload não deverá compensar uma autenticação ausente ou inválida.
+
 ## RS02 — Autorização por objeto em alterações de agendamentos
 
 ### Origem e objetivo
