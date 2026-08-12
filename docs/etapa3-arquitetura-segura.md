@@ -122,3 +122,38 @@ O requisito deverá ser aplicado, no mínimo, às rotas que realizam as operaç�
 | Risco e requisito | Vulnerabilidade ou categoria | Referência utilizada | Relação com o sistema |
 |---|---|---|---|
 | `R06` / `RS06` | `OWASP API5:2023 — Broken Function Level Authorization` e `OWASP API6:2023 — Unrestricted Access to Sensitive Business Flows` | [OWASP API Security Top 10 — API5:2023](https://owasp.org/API-Security/editions/2023/en/0xa5-broken-function-level-authorization/) | O sistema expõe rotas administrativas que, sem a verificação de papel no servidor, podem ser acessadas por qualquer usuário autenticado que descubra ou deduza o caminho. Além disso, a ausência de DTOs estritos permite que campos como `perfil` sejam aceitos e persistidos indevidamente por *Mass Assignment*. O `RS06` mitiga ambos os vetores ao centralizar a verificação de autorização no backend e ao restringir o contrato de dados aceito pela API. |
+
+## RS04 — Rastreabilidade e retenção de registros 
+
+### Origem e objetivo
+
+| Campo | Definição|
+|---|---| 
+
+| ID | `RS04` |
+| Risco de origem | `R03 — Alteração de registro sem rastreabilidade` (`Médio`, pontuação `6`) |
+| Ameaça e caso de abuso relacionados | `T03 — Repudiation` e `CA03 — Exclusão sem rastreabilidade` |
+| Controle relacionado | `C03.1 — Implementar o padrão Soft Delete` e `C03.2 — Criação de Triggers de auditoria` |
+| Objetivo | Garantir que nenhuma exclusão de agendamento seja física e que toda modificação de dados sensíveis gere uma trilha de auditoria irrefutável e externa à aplicação. |
+
+### Decisão arquitetural
+
+| Campo | Definição | 
+|---|---| 
+| Risco tratado | `R03 — Alteração de registro sem rastreabilidade` |
+| Decisão | Adoção obrigatória do padrão *Soft Delete* na camada de aplicação via ORM, combinada com a implementação de *Triggers* de Auditoria nativas no banco de dados relacional para espelhar eventos críticos. |
+| Justificativa | O histórico de agendamentos contém dados sensíveis regulados pela LGPD. Confiar exclusivamente no backend para evitar exclusões físicas é insuficiente caso a aplicação falhe ou um atacante interno obtenha acesso direto ao banco. A estratégia de Defesa em Profundidade assegura que o banco atue como uma segunda camada autônoma, registrando ações destrutivas de forma imutável. |
+| Componente afetado | Camada de Persistência (Entidades no Backend/ORM e Banco de Dados PostgreSQL). |
+| Resultado esperado | Qualquer solicitação de `DELETE` vinda da API será convertida em uma atualização de status. Além disso, alterações de estado no banco gerarão logs automáticos rastreáveis, inviabilizando o repúdio da ação. |
+
+### Requisito de segurança
+
+| ID | Risco de origem | Requisito de segurança | Critério de verificação |
+|---|---|---|---|
+| `RS04` | `R03` | O sistema não deve permitir exclusões físicas nas tabelas de agendamentos e pacientes. Toda remoção deve ser lógica. Simultaneamente, o banco de dados deve registrar em uma tabela de auditoria separada os detalhes (data, hora, estado anterior) de qualquer modificação. | Testes de integração deverão demonstrar que a execução de um comando de deleção pela API resulta na atualização da coluna `deleted_at` e que o registro continua existindo fisicamente na tabela. A validação técnica no banco deverá comprovar que a tabela de auditoria recebe uma nova linha de log automaticamente após qualquer operação DML. |
+
+### Vulnerabilidade catalogada
+
+| Risco e requisito | Vulnerabilidade ou categoria | Referência utilizada | Relação com o sistema |
+|---|---|---|---|
+| `R03` / `RS04` | `OWASP Top 10 2021 — A09:2021-Security Logging and Monitoring Failures` | [OWASP Top 10:2021 — A09 Security Logging and Monitoring Failures](https://owasp.org/Top10/A09_2021-Security_Logging_and_Monitoring_Failures/) | O sistema lida com dados críticos de saúde e agendas. A ausência de logs adequados e a permissão de exclusão física permanente impossibilitam a detecção de fraudes, a recuperação de dados perdidos e a identificação de atores maliciosos internos ou externos. O `RS04` soluciona essa falha impondo retenção lógica e geração de trilha de auditoria contínua na camada de persistência. |
