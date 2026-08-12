@@ -1,7 +1,5 @@
 # Modelagem de Ameaças com STRIDE
 
-> Documento em construção.
-
 ## 1. Identificação do sistema
 
 ### 1.1 Nome do sistema
@@ -19,13 +17,29 @@ Aira Arima, Ana Carolina Poltronieri, Graziela Bitencourt, Luan Martins, Lucie G
 
 ### 1.4 Justificativa da escolha
 
+O sistema de agendamento de consultas foi escolhido porque reúne diferentes perfis de usuário, dados pessoais, credenciais, agendas e operações relevantes, como criação, remarcação e cancelamento de consultas. Além disso, envolve concorrência pelo mesmo horário, funções administrativas e comunicação entre interface, API e banco de dados. Essas características permitem analisar ameaças concretas relacionadas à confidencialidade, integridade, disponibilidade, autenticidade, autorização e rastreabilidade.
+
 ## 2. Descrição do sistema
 
 ### 2.1 Problema que o sistema resolve
 
+O sistema centraliza a oferta de horários por profissionais de saúde e a procura por consultas pelos pacientes. A plataforma permite localizar profissionais e horários disponíveis, registrar e acompanhar agendamentos e administrar as agendas, reduzindo a necessidade de coordenação manual e o risco de informações inconsistentes ou reservas conflitantes.
+
 ### 2.2 Usuários do sistema
 
+O sistema é utilizado por visitantes ainda não autenticados, pacientes, profissionais de saúde e administradores. Visitantes podem consultar informações públicas, cadastrar-se e autenticar-se. Pacientes gerenciam as próprias consultas; profissionais configuram sua disponibilidade e consultam sua agenda; administradores realizam a manutenção geral da plataforma.
+
 ### 2.3 Principais funcionalidades
+
+As principais funcionalidades consideradas na análise são:
+
+- cadastro e autenticação de usuários;
+- consulta de profissionais, especialidades e horários disponíveis;
+- criação, visualização, remarcação e cancelamento de agendamentos;
+- gestão da disponibilidade e da agenda dos profissionais;
+- manutenção administrativa de usuários, profissionais e especialidades.
+
+Prontuários médicos completos, diagnósticos, prescrições, consultas por vídeo, pagamentos, integração com planos de saúde, emissão de documentos médicos e comunicação clínica não fazem parte do escopo analisado.
 
 #### Autenticação e gerenciamento de sessões
 
@@ -49,7 +63,11 @@ Quando duas requisições concorrentes tentam reservar o mesmo período, apenas 
 
 ### 2.4 Informações armazenadas ou transmitidas
 
+O sistema armazena ou transmite dados de identificação e contato, credenciais de acesso, dados de autenticação e sessão, informações profissionais e especialidades, horários disponíveis, dados e estados dos agendamentos, vínculos entre pacientes e profissionais, informações administrativas e registros de auditoria. As comunicações entre cliente e API deverão ocorrer por HTTPS.
+
 ### 2.5 Recursos que precisam ser protegidos
+
+Os principais recursos protegidos são as contas e credenciais dos usuários, os dados pessoais, os tokens e segredos da aplicação, as agendas e disponibilidades dos profissionais, os registros e históricos de consultas, os logs de auditoria, a API, o banco de dados, as configurações da aplicação e a disponibilidade do serviço.
 
 ## 3. Usuários, ativos e pontos de interação
 
@@ -76,6 +94,14 @@ A camada de persistência deste sistema, baseada em um banco de dados relacional
 - **Registros de Agendamento (Integridade Referencial):** Conforme regra de negócio, os registros de consulta não sofrem deleção física, devendo adotar a abordagem de *Soft Delete* para manter o histórico intacto em caso de cancelamentos.
 
 ### 3.3 Pontos de interação
+
+Os principais pontos de interação e entrada de dados são:
+
+- a interface web, utilizada por visitantes, pacientes, profissionais e administradores;
+- a API, que recebe requisições HTTPS e aplica autenticação, autorização, validações e regras de negócio;
+- o mecanismo de autenticação e gerenciamento de sessões, responsável pelas credenciais e tokens;
+- a camada de persistência e o banco de dados, que armazenam usuários, disponibilidades, agendamentos e logs;
+- as rotas públicas, autenticadas e administrativas apresentadas na interface conceitual da API.
 
 ### 3.4 Interface conceitual da API
 
