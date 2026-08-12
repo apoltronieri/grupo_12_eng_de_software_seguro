@@ -61,3 +61,17 @@ Ao final de cada ciclo de entrega, as seguintes evidências deverão estar dispo
 | Log de *smoke tests* pós-deploy | Confirmação de que rotas administrativas retornam `403` para perfis não autorizados no ambiente de produção. | Etapa de deploy |
 | Logs de auditoria | Registros dos eventos `EV-03` a `EV-08` produzidos em produção durante o período. | Produção contínua |
 | Histórico de alertas | Registro de alertas `RD06`/`RD06-B` disparados, classificações e ações tomadas. | Produção contínua |
+
+## 3. Requisitos e decisões de arquitetura relacionados a R02
+
+### 3.1 Posição no pipeline
+
+A análise de requisitos e decisões de arquitetura deverá ocorrer depois da identificação e priorização dos riscos e antes da implementação. Toda alteração nos endpoints de remarcação ou cancelamento de agendamentos deverá manter a rastreabilidade entre `R02`, o controle `C02.2`, o requisito `RS02`, a prática segura `PS02` e os testes `TS02.1` e `TS02.2`.
+
+| Momento | Atividade de segurança | Evidência produzida | Condição para continuar |
+|---|---|---|---|
+| **Requisitos e decisões de arquitetura** | Revisar mudanças que afetem as operações de agendamento em relação ao `RS02` e às decisões que o materializam: obter a identidade pelo contexto de autenticação, verificar no backend a autorização sobre o objeto e negar a operação antes de qualquer alteração persistente. Registrar no Pull Request quais endpoints e critérios de verificação são afetados. | Referência ao `RS02` e ao seu critério de verificação; vínculo com `R02` e `C02.2`; descrição da `PS02`; definição e, quando houver implementação executável, relatório dos testes `TS02.1` e `TS02.2`. | O pipeline somente poderá continuar quando a alteração demonstrar atendimento ao `RS02` e os testes de autorização relacionados forem aprovados. |
+
+### 3.2 Condição de bloqueio
+
+**Gate `G-RS02` — Integridade de agendamentos:** o pipeline deverá ser bloqueado quando uma alteração que afete remarcação ou cancelamento não demonstrar atendimento ao `RS02` ou quando `TS02.1` ou `TS02.2` apresentar resultado diferente do esperado. A continuidade dependerá da correção da implementação e de uma nova execução bem-sucedida dos testes.
