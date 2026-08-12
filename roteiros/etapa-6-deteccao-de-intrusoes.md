@@ -33,7 +33,15 @@ Os eventos abaixo deverão ser registrados nos logs de auditoria e de aplicaçã
 | `EV-07` | Alteração de papel ou nível de acesso de um usuário | Log de auditoria | Identificador do executor, identificador do usuário afetado, papel anterior, papel novo, *timestamp*. |
 | `EV-08` | Token JWT com papel diferente do perfil registrado no banco | Log de aplicação (validação de token) | Identificador do usuário, papel no token, papel no banco, endereço IP, *timestamp*. |
 
-## 3. Regra de detecção relacionada a R06 e CA06
+## 3. Regras de detecção 
+
+### R04 / CA04 - Acesso a dados pessoais do profissional
+| Campo | Descrição |
+|---|---|
+| Risco observado | `R04 / CA04` — Tentativa de extração em massa (*scraping*) de dados pessoais e sensíveis dos profissionais. |
+| Fonte de dados | Logs de requisição HTTP da API e logs de auditoria de acessos aos endpoints de busca/consulta de profissionais. |
+| Condição de alerta | Um único usuário autenticado (mesmo ID de sessão ou IP) realiza um volume excessivo e atípico de buscas ou acessos a perfis de profissionais em um curto intervalo de tempo (ex: paginação rápida, mais de 30 requisições por minuto), indicando o uso de automação ou comportamento anômalo para coleta de dados da resposta da API. |
+| Resposta inicial | Invalidar imediatamente a sessão ativa (logout forçado), bloquear temporariamente novas requisições da conta/IP e disparar um alerta de alta prioridade para a equipe de segurança investigar se houve vazamento efetivo. |
 
 ### RD06 — Tentativas repetidas de acesso não autorizado a rotas restritas
 
