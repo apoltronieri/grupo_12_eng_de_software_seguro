@@ -75,3 +75,32 @@ A análise de requisitos e decisões de arquitetura deverá ocorrer depois da id
 ### 3.2 Condição de bloqueio
 
 **Gate `G-RS02` — Integridade de agendamentos:** o pipeline deverá aplicar dois pontos de verificação. Antes da implementação, deverá bloquear uma alteração que afete remarcação ou cancelamento quando não houver rastreabilidade com o `RS02`, critério de verificação ou tratamento arquitetural correspondente. Durante os testes automatizados, deverá bloquear a integração quando `TS02.1` ou `TS02.2`, executado para o endpoint afetado, apresentar resultado diferente do esperado. A continuidade dependerá da correção da documentação ou da implementação, conforme o ponto da falha, e de uma nova verificação bem-sucedida.
+
+## 4. Planejamento e análise de ameaças relacionados a R01
+
+### 4.1 Posição no pipeline
+
+O planejamento e a análise de ameaças deverão ocorrer antes da implementação e ser revisados quando uma alteração afetar autenticação, emissão ou validação de JWT, armazenamento de tokens, sessões ou endpoints protegidos. A revisão deverá manter a rastreabilidade entre `T01 — Spoofing`, `CA01`, `R01 — Comprometimento de conta ou token`, o controle `C01.2`, o requisito `RS01` e a prática `PS01`.
+
+| Momento | Atividade de segurança | Evidência produzida | Condição para continuar |
+|---|---|---|---|
+| **Planejamento e análise de ameaças** | Revisar se a mudança cria ou altera caminhos para roubo, adulteração ou aceitação indevida de JWT. Confirmar os ativos e componentes afetados, as condições do `CA01`, a probabilidade e o impacto do `R01` e a necessidade de atualizar o `RS01`, seus critérios de verificação e os testes `TS01.1`, `TS01.2` e `TS01.3`. Registrar na issue relacionada o resultado da revisão e os documentos afetados. | Registro de análise de ameaças na issue, contendo a decisão da revisão, a rastreabilidade `T01 → CA01 → R01 → C01.2 → RS01 → PS01`, os componentes afetados, a indicação de quais critérios e testes deverão ser mantidos ou atualizados e o link do commit correspondente. | A alteração somente poderá avançar para implementação quando a análise estiver registrada, a rastreabilidade estiver completa e eventuais mudanças no risco, requisito ou testes estiverem documentadas. |
+
+### 4.2 Evidência da atividade
+
+A evidência principal será o **registro de análise de ameaças na issue relacionada à atividade**. Esse registro deverá informar:
+
+- qual mudança foi analisada;
+- quais componentes de autenticação ou sessão foram afetados;
+- se `T01`, `CA01` ou `R01` precisaram ser atualizados;
+- se a avaliação de probabilidade, impacto ou risco residual mudou;
+- quais critérios do `RS01` e testes de `PS01` se aplicam à mudança;
+- quem realizou e quem revisou a análise;
+- a decisão final: aprovada, aprovada com ajustes ou bloqueada.
+- o link do commit que registra a alteração.
+
+O vínculo entre a issue, o commit e os documentos versionados constituirá a evidência auditável de que o planejamento de segurança foi realizado e registrado no histórico do projeto.
+
+### 4.3 Condição de bloqueio
+
+**Gate `G-R01-AMEACAS` — Revisão de autenticação:** o pipeline deverá impedir o avanço para implementação quando uma alteração relacionada a autenticação ou sessão não apresentar o registro de análise de ameaças, não mantiver a rastreabilidade com `R01/RS01/PS01` ou identificar mudança relevante sem atualizar os documentos e testes correspondentes. A continuidade dependerá da correção da documentação e de uma nova revisão aprovada.
