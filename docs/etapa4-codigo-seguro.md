@@ -1,5 +1,115 @@
 # Etapa 4 — Código Seguro e Testes de Segurança
 
+## PS01 — Validação centralizada de JWT no backend
+
+### Identificação da prática
+
+| Campo | Definição |
+|---|---|
+| ID | `PS01` |
+| Prática | Validar tokens JWT de forma centralizada e negar o acesso quando qualquer verificação falhar |
+| Risco relacionado | `R01 — Comprometimento de conta ou token` |
+| Requisito relacionado | `RS01 — Validação de tokens de acesso` |
+| Controle principal | `C01.2 — Proteger a sessão e validar os tokens de acesso` |
+| Forma de realização | Pseudocódigo compatível com um filtro de autenticação do Spring Security |
+
+A prática consiste em realizar toda validação do JWT em um componente central executado antes dos controladores. O algoritmo aceito e a chave de verificação devem vir da configuração confiável do servidor, nunca do próprio token. A autenticação deve falhar de forma segura: se assinatura, algoritmo, emissor, público ou validade temporal forem inválidos, o contexto de segurança não será criado e o endpoint protegido não será executado.
+
+### Testes de segurança definidos antes da solução
+
+Para os testes, considere o endpoint protegido `GET /agendamentos` e uma conta ativa de paciente identificada como `pacienteA`.
+
+| ID | Tipo | Entrada ou ação | Resultado seguro esperado |
+|---|---|---|---|
+| `TS01.1` | Caso de uso válido | O `pacienteA` envia um JWT com assinatura válida, algoritmo permitido, `iss` e `aud` esperados e prazo de expiração vigente. | A API autentica o `pacienteA`, permite a execução do endpoint e retorna somente os agendamentos autorizados para essa identidade. |
+| `TS01.2` | Caso inválido | O `pacienteA` envia um JWT corretamente assinado, mas cujo valor de `exp` já está no passado. | A API retorna `401 Unauthorized`, não cria o contexto autenticado e não executa a consulta de agendamentos. |
+| `TS01.3` | Caso malicioso | Um atacante altera o `sub` ou o perfil de um JWT válido para assumir outra identidade, mantendo a assinatura original incompatível com o conteúdo modificado. | A verificação da assinatura falha, a API retorna `401 Unauthorized`, não executa o endpoint e registra apenas o motivo técnico necessário para auditoria, sem gravar o token no log. |
+
+Os testes deverão confirmar tanto a resposta HTTP quanto a ausência de execução da operação protegida. Verificar apenas o código `401` não é suficiente se o controlador, serviço ou repositório tiver sido acionado antes da recusa.
+
+### Pseudocódigo da solução
+
+```text
+função filtrarRequisicaoProtegida(requisicao):
+    cabecalho = requisicao.obterCabecalho("Authorization")
+
+    se cabecalho não começa exatamente com "Bearer ":
+        retornar resposta 401 sem executar o endpoint
+
+    token = extrairToken(cabecalho)
+
+    tentar:
+        configuracaoConfiavel = carregarDoServidor(
+            algoritmoPermitido,
+            chaveDeVerificacao,
+            emissorEsperado,
+            publicoEsperado
+        )
+
+        resultado = bibliotecaJWT.verificar(
+            token,
+            algoritmo = configuracaoConfiavel.algoritmoPermitido,
+            chave = configuracaoConfiavel.chaveDeVerificacao
+        )
+
+        se resultado.assinaturaValida é falso:
+            retornar resposta 401 sem executar o endpoint
+
+        claims = resultado.claimsVerificadas
+
+        se claims.iss != configuracaoConfiavel.emissorEsperado:
+            retornar resposta 401 sem executar o endpoint
+
+        se configuracaoConfiavel.publicoEsperado não pertence a claims.aud:
+            retornar resposta 401 sem executar o endpoint
+
+        se claims.exp está ausente ou claims.exp <= instanteAtual:
+            retornar resposta 401 sem executar o endpoint
+
+        se claims.nbf existe e claims.nbf > instanteAtual:
+            retornar resposta 401 sem executar o endpoint
+
+        conta = repositorioDeUsuarios.buscarAtivaPorId(claims.sub)
+        se conta não existe:
+            retornar resposta 401 sem executar o endpoint
+
+        contextoDeSeguranca.autenticar(
+            identidade = conta.id,
+            perfil = perfilPermitido(claims)
+        )
+
+        continuar para o endpoint protegido
+
+    capturar erro de token:
+        auditoria.registrarFalhaDeAutenticacao(
+            motivoClassificado = classificarSemExporToken(erro)
+        )
+        limpar contexto de segurança
+        retornar resposta 401 sem executar o endpoint
+```
+
+### Aplicação da prática
+
+1. O `SecurityFilterChain` do Spring Security posiciona o filtro JWT antes dos controladores protegidos.
+2. O filtro extrai o token exclusivamente do esquema `Bearer` e não aceita credenciais por parâmetros de URL.
+3. Uma biblioteca mantida realiza a verificação criptográfica; o sistema não implementa algoritmos próprios.
+4. O servidor utiliza uma lista explícita de algoritmos permitidos e uma chave obtida de configuração confiável.
+5. As declarações `iss`, `aud`, `exp` e, quando presente, `nbf` são verificadas antes da criação do contexto autenticado.
+6. Qualquer falha limpa o contexto, interrompe a cadeia e aciona um `AuthenticationEntryPoint` que retorna `401 Unauthorized`.
+7. O token completo não é escrito em logs. O registro contém apenas informações necessárias para investigar a falha.
+8. Somente depois de todas as verificações o Spring Security disponibiliza a identidade aos serviços e controladores.
+
+### Resultado esperado
+
+Com a prática aplicada, somente JWTs cuja integridade e declarações obrigatórias tenham sido validadas criam um contexto autenticado. Tokens expirados, alterados, sem assinatura válida, com algoritmo não permitido ou com emissor ou público incorretos recebem `401 Unauthorized`, e a operação protegida permanece sem execução.
+
+Essa prática implementa o `RS01` e reduz o `R01` ao impedir que conteúdo não confiável do JWT seja aceito como identidade. Os testes deverão ser automatizados e executados na integração contínua quando houver uma implementação executável da API.
+
+### Referências OWASP
+
+- [OWASP REST Security Cheat Sheet — JWT](https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html#jwt): recomenda proteger a integridade do JWT, não aceitar `alg: none`, determinar o algoritmo pela configuração do servidor e verificar declarações como `iss`, `aud`, `exp` e `nbf`.
+- [OWASP API Security Top 10 — API2:2023 Broken Authentication](https://owasp.org/API-Security/editions/2023/en/0xa2-broken-authentication/): considera vulneráveis APIs que não validam a autenticidade ou a expiração dos tokens ou aceitam JWTs sem assinatura ou com assinatura fraca.
+
 ## PS02 — Autorização por objeto no backend
 
 ### Identificação da prática
