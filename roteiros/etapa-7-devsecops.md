@@ -61,3 +61,17 @@ Ao final de cada ciclo de entrega, as seguintes evidências deverão estar dispo
 | Log de *smoke tests* pós-deploy | Confirmação de que rotas administrativas retornam `403` para perfis não autorizados no ambiente de produção. | Etapa de deploy |
 | Logs de auditoria | Registros dos eventos `EV-03` a `EV-08` produzidos em produção durante o período. | Produção contínua |
 | Histórico de alertas | Registro de alertas `RD06`/`RD06-B` disparados, classificações e ações tomadas. | Produção contínua |
+
+## 3. Requisitos e decisões de arquitetura relacionados a R02
+
+### 3.1 Posição no pipeline
+
+A análise de requisitos e decisões de arquitetura deverá ocorrer depois da identificação e priorização dos riscos e antes da implementação. Toda alteração nos endpoints de remarcação ou cancelamento de agendamentos deverá manter a rastreabilidade entre `R02`, o controle `C02.2`, o requisito `RS02`, a prática segura `PS02` e os testes `TS02.1` e `TS02.2`.
+
+| Momento | Atividade de segurança | Evidência produzida | Condição para continuar |
+|---|---|---|---|
+| **Requisitos e decisões de arquitetura** | Revisar mudanças que afetem as operações de agendamento em relação ao `RS02` e às decisões que o materializam: obter a identidade pelo contexto de autenticação, verificar no backend a autorização sobre o objeto e negar a operação antes de qualquer alteração persistente. Registrar no Pull Request quais endpoints e critérios de verificação são afetados. | Referência ao `RS02` e ao seu critério de verificação; vínculo com `R02` e `C02.2`; registro dos endpoints afetados e das decisões de autorização aplicáveis. | A alteração somente poderá avançar para a implementação quando o requisito, seu critério de verificação e o tratamento arquitetural da autorização estiverem documentados e coerentes entre si. |
+
+### 3.2 Condição de bloqueio
+
+**Gate `G-RS02` — Integridade de agendamentos:** o pipeline deverá aplicar dois pontos de verificação. Antes da implementação, deverá bloquear uma alteração que afete remarcação ou cancelamento quando não houver rastreabilidade com o `RS02`, critério de verificação ou tratamento arquitetural correspondente. Durante os testes automatizados, deverá bloquear a integração quando `TS02.1` ou `TS02.2`, executado para o endpoint afetado, apresentar resultado diferente do esperado. A continuidade dependerá da correção da documentação ou da implementação, conforme o ponto da falha, e de uma nova verificação bem-sucedida.

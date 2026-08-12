@@ -132,16 +132,18 @@ Para os dois testes, considere os seguintes dados iniciais:
 - o `pacienteA` está autenticado e é titular do agendamento `AG-100`;
 - o `pacienteB` é titular do agendamento `AG-200`;
 - os dois agendamentos estão no estado `AGENDADA`;
-- a operação avaliada é `PATCH /agendamentos/{agendamentoId}/cancelamento`.
+- os cenários deverão ser aplicados à remarcação (`PATCH /agendamentos/{agendamentoId}/remarcacao`, com `novoHorarioId`) e ao cancelamento (`PATCH /agendamentos/{agendamentoId}/cancelamento`, com `motivo` opcional).
 
 | ID | Tipo | Entrada ou ação | Resultado seguro esperado |
 |---|---|---|---|
-| `TS02.1` | Caso de uso válido | O `pacienteA` solicita o cancelamento de `AG-100` com um payload contendo apenas o motivo opcional. | A solicitação é permitida, o estado de `AG-100` passa para `CANCELADA`, sua titularidade permanece inalterada e a operação é associada ao `pacienteA` no registro de auditoria. |
-| `TS02.2` | Caso não autorizado | O `pacienteA` substitui o identificador da rota por `AG-200` e solicita o cancelamento do agendamento pertencente ao `pacienteB`. | A API retorna `403 Forbidden`, não revela dados do `pacienteB`, mantém `AG-200` no estado `AGENDADA` e registra a tentativa recusada sem incluir dados sensíveis no log. |
+| `TS02.1` | Caso de uso válido | Para cada operação, o `pacienteA` solicita a alteração de `AG-100` usando somente o payload permitido: um `novoHorarioId` disponível na remarcação ou o `motivo` opcional no cancelamento. | A solicitação é permitida e produz somente o efeito correspondente: o horário de `AG-100` é atualizado na remarcação ou seu estado passa para `CANCELADA` no cancelamento. A titularidade permanece inalterada e a operação é associada ao `pacienteA` no registro de auditoria. |
+| `TS02.2` | Caso não autorizado | Para cada operação, o `pacienteA` substitui o identificador da rota por `AG-200` e envia o payload permitido para tentar remarcar ou cancelar o agendamento pertencente ao `pacienteB`. | A API retorna `403 Forbidden`, não revela dados do `pacienteB`, mantém inalterados o horário, o estado e a titularidade de `AG-200` e registra a tentativa recusada sem incluir dados sensíveis no log. |
 
-O teste `TS02.2` deverá verificar o estado persistido antes e depois da requisição, pois uma resposta de erro isolada não comprova que a alteração foi impedida ou revertida.
+O teste `TS02.2` deverá verificar o estado persistido antes e depois de cada operação, pois uma resposta de erro isolada não comprova que a alteração foi impedida ou revertida.
 
 ### Pseudocódigo da solução
+
+O cancelamento é utilizado abaixo como exemplo representativo da prática. A remarcação deverá repetir a mesma sequência de identificação, autorização por objeto e recusa anterior à persistência, alterando apenas as regras e os dados próprios da operação.
 
 ```text
 função cancelarAgendamento(agendamentoId, entrada, contextoAutenticado):
