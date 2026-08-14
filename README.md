@@ -24,6 +24,7 @@ A análise de segurança foi desenvolvida em etapas progressivas, cada uma docum
 | 2 | Análise, Priorização e Tratamento de Riscos | [`docs/etapa2-tratamento-de-riscos.md`](docs/etapa2-tratamento-de-riscos.md) |
 | 3 | Projeto de uma Arquitetura Segura | [`docs/etapa3-arquitetura-segura.md`](docs/etapa3-arquitetura-segura.md) |
 | 4 | Código Seguro e Testes de Segurança | [`docs/etapa4-codigo-seguro.md`](docs/etapa4-codigo-seguro.md) |
+| 5 | Verificação de Vulnerabilidades | [`docs/etapa5-verificacao-vulnerabilidades.md`](docs/etapa5-verificacao-vulnerabilidades.md) |
 | 6 | Detecção de Intrusões | [`roteiros/etapa-6-deteccao-de-intrusoes.md`](roteiros/etapa-6-deteccao-de-intrusoes.md) |
 | 7 | DevSecOps: Monitoramento e Resposta no Pipeline | [`roteiros/etapa-7-devsecops.md`](roteiros/etapa-7-devsecops.md) |
 
@@ -40,6 +41,9 @@ Decisões arquiteturais e requisitos de segurança derivados dos riscos prioriza
 
 **Etapa 4 — Código Seguro e Testes de Segurança**
 Práticas seguras de implementação descritas em pseudocódigo (PS01 e PS02), com testes de segurança definidos antes da solução (abordagem TDD de segurança).
+
+**Etapa 5 — Verificação de Vulnerabilidades**
+Execução de scan automatizado com OWASP ZAP contra o OWASP Juice Shop, análise de três achados priorizados (CSP ausente, HSTS ausente e CORS permissivo), mapeamento para CWE e riscos do projeto, e tratamento de limitações e falsos positivos. Evidências armazenadas em `evidencias/etapa5/`.
 
 **Etapa 6 — Detecção de Intrusões**
 Definição dos eventos de segurança a registrar (EV-01 a EV-08), regras de detecção baseadas nos riscos prioritários (RD06, RD06-B) e procedimento de tratamento inicial após geração de alerta.
@@ -78,6 +82,13 @@ Integração de segurança em cada etapa do pipeline de entrega (SAST, SCA, test
 ├── roteiros/
 │   ├── etapa-6-deteccao-de-intrusoes.md
 │   └── etapa-7-devsecops.md
+├── evidencias/
+│   └── etapa5/
+│       ├── evidencia A01.png
+│       ├── evidencia A02.png
+│       ├── evidencia A03.png
+│       ├── evidencia captura geral.png
+│       └── relatorio-zap.md
 ├── diagramas/
 │   ├── diagrama_de_contexto.png
 │   └── diagrama_arquitetura_segura.png
@@ -87,5 +98,6 @@ Integração de segurança em cada etapa do pipeline de entrega (SAST, SCA, test
 
 - `docs/`: documentos de cada etapa entregável e registro de riscos.
 - `roteiros/`: documentos de etapas orientadas a roteiro (detecção de intrusões e DevSecOps).
+- `evidencias/`: capturas de tela e relatórios gerados pelas ferramentas de verificação.
 - `diagramas/`: diagramas e seus arquivos-fonte.
 - `imagens/`: imagens complementares utilizadas na documentação.
