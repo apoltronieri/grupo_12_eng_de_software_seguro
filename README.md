@@ -72,6 +72,7 @@ Integração de segurança em cada etapa do pipeline de entrega (SAST, SCA, test
 │   ├── etapa2-tratamento-de-riscos.md
 │   ├── etapa3-arquitetura-segura.md
 │   ├── etapa4-codigo-seguro.md
+│   ├── etapa5-verificacao-vulnerabilidades.md
 │   └── registro-de-riscos/
 │       ├── R01.md
 │       ├── R02.md

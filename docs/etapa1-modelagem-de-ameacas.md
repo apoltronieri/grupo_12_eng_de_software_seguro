@@ -347,8 +347,22 @@ Outra falha estrutural comum associada à escalada de privilégios é o *Mass As
 
 ### 7.1 Ameaças mais preocupantes
 
+Considerando a criticidade dos dados e o modelo arquitetural proposto, as ameaças mais preocupantes identificadas foram o **T01 — Spoofing (Forjamento de Identidade)** e o **T06 — Elevation of Privilege (Escalada de Privilégios)**. Ambas comprometem diretamente a fundação do controle de acesso (RBAC), permitindo que atacantes assumam controle de contas legítimas ou obtenham acessos administrativos não autorizados, o que poderia levar a um comprometimento sistêmico e vazamento de informações médicas.
+
 ### 7.2 Ativos mais importantes
+
+Os ativos mais críticos identificados no sistema incluem:
+- **Banco de Dados Principal:** Contém dados sensíveis de saúde, informações de contato e o histórico de agendamentos (altamente sujeitos a normas de privacidade como a LGPD).
+- **Tokens de Autenticação (JWT) e Credenciais:** As chaves de acesso ao sistema; se interceptados ou forjados, invalidam todas as restrições da API.
+- **Disponibilidade da API de Agendamentos:** O núcleo de negócio da plataforma, cuja indisponibilidade causa interrupção direta no atendimento de pacientes.
 
 ### 7.3 Abusos de maior impacto
 
+Os casos de abuso que trariam as piores consequências (reputacionais e legais) são o **CA06 (Escalada de Privilégios)**, que permitiria a sabotagem e a adulteração global do sistema por parte de um perfil inferior, e o **CA04 (Information Disclosure / IDOR)**, que culminaria no vazamento em massa de dados e prontuários de pacientes, caracterizando um incidente grave de segurança e privacidade.
+
 ### 7.4 Dificuldades encontradas
+
+Durante esta etapa inicial, os principais desafios incluíram:
+- Desenhar as fronteiras corretas de confiança entre os perfis de *Paciente*, *Profissional* e *Administrador*, garantindo que a modelagem conceitual do RBAC fosse rígida o suficiente.
+- Equilibrar as exigências de segurança (como tokens de curta duração e validações complexas) sem prejudicar a usabilidade e a experiência do usuário final.
+- Traduzir as ameaças puramente técnicas para os impactos reais de negócio associados ao domínio da saúde.
