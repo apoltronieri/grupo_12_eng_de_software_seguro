@@ -31,6 +31,15 @@ Os testes abaixo deverão existir como testes automatizados e ser executados no 
 | `TS06.4` | Acesso legítimo | Token JWT com papel `ADMIN` envia `POST /profissionais` com payload válido. | A API retorna `201 Created`; o profissional é criado; o evento é registrado como `EV-06`. |
 | `TS06.5` | Acesso legítimo | Token JWT com papel `PACIENTE` envia `GET /agendamentos` (rota do próprio perfil). | A API retorna `200 OK` com os agendamentos do paciente autenticado; nenhum erro de autorização é gerado. |
 
+### 1.4 Implementação segura e testes automatizados no pipeline
+
+Para contemplar os requisitos de implementação segura e testes automatizados na esteira de entrega relacionados à camada de persistência e rastreabilidade, foram definidas as seguintes atividades e evidências no pipeline:
+
+| Atividade no pipeline | Descrição técnica | Evidência produzida |
+| --- | --- | --- |
+| **Implementação segura (Código e ORM)** | Análise estática (SAST) e revisões de código obrigatórias (*Pull Requests*) para verificar a aplicação correta do mecanismo de *Soft Delete* nas entidades e impedir exclusões físicas indevidas. | Relatório da ferramenta SAST vinculado ao PR e histórico de aprovações de código no repositório. |
+| **Testes automatizados (Build / CI)** | Execução automatizada de testes de integração para verificar se as operações de remoção são convertidas em exclusões lógicas e se os mecanismos de auditoria registram as alterações realizadas no banco de dados. | Relatórios de execução dos testes automatizados com o status de aprovação do *build*. |
+
 ## 2. Resposta a incidentes relacionados a R06 no pipeline
 
 ### 2.1 Gatilhos de resposta

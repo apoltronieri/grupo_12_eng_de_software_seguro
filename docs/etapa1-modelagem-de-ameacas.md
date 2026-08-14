@@ -280,7 +280,7 @@ Outra falha estrutural comum associada à escalada de privilégios é o *Mass As
 
 ### CA03 — Exclusão sem rastreabilidade
 
-- **Ator:** Usuário interno (ex: atendente) ou sistema comprometido.
+- **Ator:** Usuário interno ou sistema comprometido.
 - **Objetivo:** Excluir um agendamento no banco de dados para encobrir falhas operacionais ou fraudar a agenda, sem deixar provas de quem executou a ação.
 - **Condições necessárias:** As tabelas do banco de dados não utilizam *Soft Delete* e a aplicação não gera trilhas de auditoria para registrar alterações e deleções.
 - **Fluxo de abuso:**
