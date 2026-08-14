@@ -40,3 +40,4 @@ A pontuação é calculada por `Probabilidade × Impacto` e classificada conform
 | [R03](registro-de-riscos/R03.md) | T03 — Repudiation / CA03 | 2 | 3 | 6 | Médio |
 | [R04](registro-de-riscos/R04.md) | T04 — Information Disclosure / CA04 | 3 | 4 | 12 | Crítico |
 | [R05](registro-de-riscos/R05.md) | T05 — Denial of Service / CA05 | 4 | 3 | 12 | Crítico |
+| [R06](registro-de-riscos/R06.md) | T06 — Elevation of Privilege / CA06 | 3 | 4 | 12 | Crítico |

@@ -1,10 +1,39 @@
 # Etapa 3 — Projeto de uma Arquitetura Segura
 
-## Decisões de arquitetura
+## RS05 — Rate Limiting e Prevenção de Exaustão de Recursos
 
-| Decisão | Risco tratado | Justificativa | Componente afetado | Resultado esperado |
-|---|---|---|---|---|
-| Implementar *Rate Limiting* (Limitação de Taxa) por IP na borda da aplicação, alinhado à configuração de *Timeouts* estritos para consultas longas no banco de dados. | R05 — Indisponibilidade da API por exaustão de recursos | A ausência de restrições no tráfego de entrada permite que a API tente processar picos massivos de requisições anômalas ou maliciosas (como ataques DDoS ou varreduras automatizadas). Isso gera um gargalo rápido que esgota recursos vitais do sistema (CPU, memória RAM e, principalmente, o *pool* de conexões do banco de dados). Ao limitar a taxa de acesso, estipulamos um teto de processamento seguro que a infraestrutura suporta sem degradar. | API Gateway (Proxy Reverso) e Servidor de Aplicação | Rejeição automática de requisições excedentes (retornando imediatamente `429 Too Many Requests`) antes que elas impactem a aplicação. Isso preserva a estabilidade geral da plataforma, evita interrupções na comunicação com o banco de dados e mantém o serviço de agendamento 100% disponível e funcional para os usuários legítimos. |
+### Origem e objetivo
+
+| Campo | Definição |
+|---|---|
+| ID | `RS05` |
+| Risco de origem | `R05 — Indisponibilidade da API por exaustão de recursos` (`Crítico`, pontuação `12`) |
+| Ameaça e caso de abuso relacionados | `T05 — Denial of Service` e `CA05` |
+| Controle relacionado | `C05.1 — Implementar Rate Limiting no API Gateway` |
+| Objetivo | Garantir que o sistema limite a taxa de acessos por IP para evitar ataques de negação de serviço e sobrecarga de recursos. |
+
+### Decisão arquitetural
+
+| Campo | Definição |
+|---|---|
+| Risco tratado | `R05 — Indisponibilidade da API por exaustão de recursos` |
+| Decisão | Implementar *Rate Limiting* (Limitação de Taxa) por IP na borda da aplicação, alinhado à configuração de *Timeouts* estritos para consultas longas no banco de dados. |
+| Justificativa | A ausência de restrições no tráfego de entrada permite que a API tente processar picos massivos de requisições anômalas ou maliciosas (DDoS ou varreduras). Isso gera um gargalo rápido que esgota recursos vitais (CPU, memória e conexões de banco de dados). Limitar a taxa estipula um teto seguro para a infraestrutura. |
+| Componente afetado | API Gateway (Proxy Reverso) e Servidor de Aplicação |
+| Resultado esperado | Rejeição automática de requisições excedentes (retornando `429 Too Many Requests`) antes de impactar a aplicação, preservando a estabilidade e a disponibilidade. |
+
+### Requisito de segurança
+
+| ID | Risco de origem | Requisito de segurança | Critério de verificação |
+|---|---|---|---|
+| `RS05` | `R05` | A API ou Gateway deverá impor um limite de requisições por IP ou token numa janela de tempo. Excedido o limite, o tráfego excedente será recusado. | Testes de carga comprovarão que volumes anormais de requisições do mesmo IP resultam em `429 Too Many Requests` e que o sistema se mantém responsivo para origens legítimas. |
+
+### Vulnerabilidade catalogada
+
+| Risco e requisito | Vulnerabilidade ou categoria | Referência utilizada | Relação com o sistema |
+|---|---|---|---|
+| `R05` / `RS05` | `OWASP API4:2023 — Unrestricted Resource Consumption` | [OWASP API4:2023](https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/) | APIs sem limite de interações podem ser derrubadas por exaustão. O RS05 mitiga o problema estipulando limites de tráfego (Rate Limiting). |
+
 ## RS01 — Validação de tokens de acesso
 
 ### Origem e objetivo
